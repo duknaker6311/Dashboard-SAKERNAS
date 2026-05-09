@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DASHBOARD SURVEI ANGKATAN KERJA NASIONAL (SAKERNAS)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary:#1a3c6e; --primary-light:#2563a8; --accent:#e8a020;
+      --bg:#f0f4f8; --card:#ffffff; --text:#1e293b; --text-muted:#64748b;
+      --border:#e2e8f0; --open:#3b82f6; --submit:#f59e0b;
+      --reject:#ef4444; --approved:#22c55e;
+      --success-bg:#dcfce7; --success-border:#86efac;
+      --warning-bg:#fef9c3; --warning-border:#fde047;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    /* HEADER */
+    .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;padding:16px 30px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+    .header-left{display:flex;align-items:center;gap:14px}
+    .header-logo{width:44px;height:44px;background:rgba(255,255,255,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .header-title{font-size:1.12rem;font-weight:700;letter-spacing:.02em}
+    .header-subtitle{font-size:.78rem;opacity:.8;margin-top:2px}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .btn-update{background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s,transform .1s}
+    .btn-update:hover{background:#c87d10;transform:translateY(-1px)}
+    .last-updated{font-size:.76rem;color:rgba(255,255,255,.7)}
+    /* MAIN */
+    .main{padding:22px 30px;max-width:1500px;margin:0 auto}
+    /* INFO CARDS */
+    .info-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+    .info-card{background:var(--card);border-radius:12px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.08);border-left:4px solid var(--primary)}
+    .info-card.open{border-left-color:var(--open)}.info-card.submit{border-left-color:var(--submit)}
+    .info-card.reject{border-left-color:var(--reject)}.info-card.approved{border-left-color:var(--approved)}
+    .info-card-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:4px}
+    .info-card-value{font-size:1.75rem;font-weight:800;line-height:1}
+    .info-card-sub{font-size:.78rem;color:var(--text-muted);margin-top:3px}
+    .info-card.open .info-card-value{color:var(--open)}.info-card.submit .info-card-value{color:var(--submit)}
+    .info-card.reject .info-card-value{color:var(--reject)}.info-card.approved .info-card-value{color:var(--approved)}
+    /* META BAR */
+    .meta-bar{background:var(--card);border-radius:12px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:center;gap:32px;box-shadow:0 1px 6px rgba(0,0,0,.07);flex-wrap:wrap}
+    .meta-item{display:flex;flex-direction:column;gap:2px}
+    .meta-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)}
+    .meta-value{font-size:.96rem;font-weight:700;color:var(--primary)}
+    .meta-deadline{color:var(--reject)}
+    .sisa-waktu-badge{padding:5px 13px;border-radius:20px;font-weight:700;font-size:.88rem}
+    .sisa-ok{background:var(--success-bg);color:#15803d;border:1px solid var(--success-border)}
+    .sisa-warn{background:var(--warning-bg);color:#92400e;border:1px solid var(--warning-border)}
+    .sisa-over{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+    /* FILTER BAR */
+    .filter-bar{background:var(--card);border-radius:12px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+    .filter-bar .filter-label{font-size:.82rem;font-weight:700;color:var(--primary);white-space:nowrap;padding-bottom:6px}
+    .filter-group{display:flex;flex-direction:column;gap:3px}
+    .filter-group label{font-size:.68rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+    .filter-bar select{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--text);background:var(--bg);cursor:pointer;min-width:175px}
+    .filter-bar select:focus{outline:none;border-color:var(--primary-light)}
+    .btn-reset{padding:7px 15px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:.82rem;cursor:pointer;color:var(--text-muted);font-weight:600;transition:all .15s}
+    .btn-reset:hover{background:var(--bg);border-color:var(--primary);color:var(--primary)}
+    /* SECTION DIVIDER */
+    .section-header{display:flex;align-items:center;gap:12px;margin:24px 0 13px;font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)}
+    .section-header::before,.section-header::after{content:'';flex:1;height:1.5px;background:var(--border)}
+    /* GRID */
+    .grid-2{display:grid;grid-template-columns:350px 1fr;gap:16px;margin-bottom:16px;align-items:start}
+    .grid-full{margin-bottom:16px}
+    /* CARD */
+    .card{background:var(--card);border-radius:12px;padding:16px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+    .card-title{font-size:.86rem;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:2px solid var(--bg)}
+    /* CHART */
+    .chart-wrap{position:relative;width:100%}
+    .chart-pie{height:255px}
+    .chart-scroll{overflow-x:auto;overflow-y:hidden;width:100%}
+    .chart-scroll canvas{display:block}
+    /* TABEL */
+    .tbl-wrap{overflow-x:auto;max-height:420px;overflow-y:auto}
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    thead tr{background:var(--primary);color:white;position:sticky;top:0;z-index:2}
+    thead th{padding:8px 9px;text-align:center;font-weight:600;letter-spacing:.03em;font-size:.74rem;white-space:nowrap}
+    thead th:first-child{text-align:left}
+    tbody tr:nth-child(even){background:#f8fafc}
+    tbody tr:hover{background:#eff6ff}
+    tbody td{padding:6px 9px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap}
+    tbody td:first-child{text-align:left;font-weight:500}
+    .tbl-footer tr{background:#e8f0fb !important;font-weight:700;position:sticky;bottom:0;z-index:2}
+    .tbl-footer td{border-top:2px solid var(--primary);color:var(--primary)}
+    .badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:.72rem;font-weight:700}
+    .badge-open{background:#dbeafe;color:#1d4ed8}.badge-submit{background:#fef3c7;color:#b45309}
+    .badge-reject{background:#fee2e2;color:#b91c1c}.badge-approved{background:#dcfce7;color:#15803d}
+    .pct{color:var(--text-muted);font-size:.73rem}
+    /* MODAL */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+    .modal-overlay.active{display:flex}
+    .modal{background:white;border-radius:16px;padding:30px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative}
+    .modal-title{font-size:1.08rem;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    .modal-close{position:absolute;top:13px;right:15px;background:none;border:none;font-size:1.35rem;cursor:pointer;color:var(--text-muted);line-height:1}
+    .modal-close:hover{color:var(--reject)}
+    .form-group{margin-bottom:13px}
+    .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+    .form-group input[type="password"],.form-group input[type="file"]{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;color:var(--text);transition:border-color .2s}
+    .form-group input:focus{outline:none;border-color:var(--primary-light)}
+    .form-group input[type="file"]{padding:7px;cursor:pointer}
+    .file-note{font-size:.74rem;color:var(--text-muted);margin-top:4px}
+    .btn-submit{width:100%;padding:11px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:.93rem;font-weight:700;cursor:pointer;margin-top:5px;transition:background .2s}
+    .btn-submit:hover{background:var(--primary-light)}
+    .modal-error{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:.82rem;margin-bottom:11px;display:none}
+    .modal-success{background:var(--success-bg);color:#15803d;border:1px solid var(--success-border);border-radius:8px;padding:9px 13px;font-size:.82rem;margin-bottom:11px;display:none}
+    /* EMPTY STATE */
+    .empty-state{text-align:center;padding:55px 20px;color:var(--text-muted)}
+    .empty-icon{font-size:3.2rem;margin-bottom:13px}
+    .empty-title{font-size:1.05rem;font-weight:600;margin-bottom:5px}
+    .empty-sub{font-size:.83rem}
+    /* FOOTER */
+    .footer{text-align:center;padding:14px;font-size:.75rem;color:var(--text-muted);border-top:1px solid var(--border);margin-top:6px}
+    .copyright{background:var(--primary);color:rgba(255,255,255,.82);text-align:center;padding:15px 22px;font-size:.8rem;line-height:1.7}
+    .copyright strong{display:block;color:#fff;font-size:.85rem;margin-bottom:2px}
+    .copyright .tagline{font-style:italic;opacity:.75;font-size:.75rem}
+    @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+    @media(max-width:900px){.main{padding:13px}.info-row{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.info-row{grid-template-columns:1fr 1fr}.header{padding:11px 13px}.meta-bar{gap:13px}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">📊</div>
+    <div>
+      <div class="header-title">DASHBOARD Survei Angkatan Kerja Nasional (SAKERNAS)</div>
+      <div class="header-subtitle">BPS Kabupaten Balangan</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">Belum ada data</span>
+    <button class="btn-update" onclick="openModal()">⬆ Update Data</button>
+  </div>
+</div>
+<div class="main">
+  <div class="meta-bar" id="metaBar" style="display:none">
+    <div class="meta-item"><span class="meta-label">Nama Kegiatan</span><span class="meta-value" id="metaNamaKegiatan">—</span></div>
+    <div class="meta-item"><span class="meta-label">Tahap</span><span class="meta-value" id="metaTahap">—</span></div>
+    <div class="meta-item"><span class="meta-label">Periode Data</span><span class="meta-value" id="metaPeriode">—</span></div>
+    <div class="meta-item"><span class="meta-label">Deadline</span><span class="meta-value meta-deadline" id="metaDeadline">—</span></div>
+    <div class="meta-item"><span class="meta-label">Sisa Waktu</span><span class="sisa-waktu-badge" id="sisaWaktu">—</span></div>
+  </div>
+  <div class="info-row" id="summaryCards" style="display:none">
+    <div class="info-card open"><div class="info-card-label">Open</div><div class="info-card-value" id="sumOpen">0</div><div class="info-card-sub" id="sumOpenPct">0%</div></div>
+    <div class="info-card submit"><div class="info-card-label">Submit</div><div class="info-card-value" id="sumSubmit">0</div><div class="info-card-sub" id="sumSubmitPct">0%</div></div>
+    <div class="info-card reject"><div class="info-card-label">Reject</div><div class="info-card-value" id="sumReject">0</div><div class="info-card-sub" id="sumRejectPct">0%</div></div>
+    <div class="info-card approved"><div class="info-card-label">Approved</div><div class="info-card-value" id="sumApproved">0</div><div class="info-card-sub" id="sumApprovedPct">0%</div></div>
+  </div>
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <span class="filter-label">🔍 Filter:</span>
+    <div class="filter-group"><label>PML</label><select id="filterPML" onchange="onFilterPML()"><option value="">— Semua PML —</option></select></div>
+    <div class="filter-group"><label>PPL</label><select id="filterPPL" onchange="onFilterPPL()"><option value="">— Semua PPL —</option></select></div>
+    <div class="filter-group"><label>SLS</label><select id="filterSLS" onchange="applyFilters()"><option value="">— Semua SLS —</option></select></div>
+    <button class="btn-reset" onclick="resetFilters()">↺ Reset Filter</button>
+  </div>
+  <div id="emptyState" class="card"><div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">Belum Ada Data</div><div class="empty-sub">Klik tombol <strong>⬆ Update Data</strong> untuk mengupload file Excel dan menampilkan dashboard.</div></div></div>
+  <!-- RINGKASAN -->
+  <div class="section-header" id="secRingkasan" style="display:none">Ringkasan Keseluruhan</div>
+  <div class="grid-2" id="chartsRow" style="display:none">
+    <div class="card"><div class="card-title">🥧 Distribusi Status Assignment</div><div class="chart-wrap chart-pie"><canvas id="pieChart"></canvas></div></div>
+    <div class="card"><div class="card-title">📋 Tabulasi Status Assignment</div>
+      <div class="tbl-wrap" style="max-height:none">
+        <table id="tblSummary"><thead><tr><th style="text-align:left">Status</th><th>Jumlah</th><th>Persentase</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table>
+      </div></div>
+  </div>
+  <!-- PER PML -->
+  <div class="section-header" id="secPML" style="display:none">Per PML</div>
+  <div class="grid-full card" id="barPMLSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per PML</div><div class="chart-scroll"><canvas id="barChartPML"></canvas></div></div>
+  <div class="grid-full card" id="tblPMLSection" style="display:none"><div class="card-title">📄 Tabulasi Status Assignment per PML</div>
+    <div class="tbl-wrap"><table id="tblPML"><thead><tr><th style="text-align:left">PML</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+  </div>
+  <!-- PER PPL -->
+  <div class="section-header" id="secPPL" style="display:none">Per PPL</div>
+  <div class="grid-full card" id="barPPLSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per PPL</div><div class="chart-scroll"><canvas id="barChartPPL"></canvas></div></div>
+  <div class="grid-full card" id="tblPPLSection" style="display:none"><div class="card-title">📄 Tabulasi Status Assignment per PPL</div>
+    <div class="tbl-wrap"><table id="tblPPL"><thead><tr><th style="text-align:left">PML</th><th style="text-align:left">PPL</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+  </div>
+  <!-- PER SLS -->
+  <div class="section-header" id="secSLS" style="display:none">Per SLS</div>
+  <div class="grid-full card" id="barSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per SLS</div><div class="chart-scroll"><canvas id="barChart"></canvas></div></div>
+  <div class="grid-full card" id="tblSection" style="display:none"><div class="card-title">📄 Tabulasi Detail per PML / PPL / SLS</div>
+    <div class="tbl-wrap"><table id="tblDetail"><thead><tr><th style="text-align:left">PML</th><th style="text-align:left">PPL</th><th style="text-align:left">SLS</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+  </div>
+</div>
+<div class="footer">DASHBOARD Survei Angkatan Kerja Nasional (SAKERNAS) &mdash; BPS Kabupaten Balangan</div>
+<div class="copyright"><strong>&copy; 2026 Tim Statistik Kependudukan dan Ketenagakerjaan BPS Kabupaten Balangan.</strong><span class="tagline">Dibuat dengan Cinta, Kopi, dan Playlist Dangdut 🎵</span></div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">⬆ Update Data</div>
+    <div id="modalError" class="modal-error"></div>
+    <div id="modalSuccess" class="modal-success"></div>
+    <div id="authStep">
+      <div class="form-group"><label>Password</label><input type="password" id="pwdInput" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')verifyPassword()"/></div>
+      <button class="btn-submit" onclick="verifyPassword()">🔓 Verifikasi</button>
+    </div>
+    <div id="uploadStep" style="display:none">
+      <div class="form-group"><label>Upload File Excel</label><input type="file" id="fileInput" accept=".xlsx,.xls"/><div class="file-note">Format: .xlsx/.xls &bull; Sheet 1: <strong>DB_Progres</strong> &bull; Sheet 2: <strong>Lembar2</strong></div></div>
+      <div style="background:#f0f4f8;border-radius:8px;padding:11px;margin-bottom:13px;font-size:.77rem;color:#475569"><strong>Kolom DB_Progres:</strong> PML | PPL | Desa | SLS | Open | Submit | Reject | Approved<br/><strong>Lembar2:</strong> Kegiatan | Tahap | Periode | Deadline</div>
+      <button class="btn-submit" onclick="processUpload()">📥 Load Dashboard</button>
+    </div>
+  </div>
+</div>
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+function hashCode(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return h}
+const PWD_HASH = hashCode('sakernas6311');
+
+// ── STATE ────────────────────────────────────────────────────
+let rawData=[],filteredData=[],metaInfo={};
+let pieInst=null,barPMLInst=null,barPPLInst=null,barSLSInst=null;
+
+// ── MODAL ────────────────────────────────────────────────────
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('active');
+  document.getElementById('pwdInput').value='';
+  document.getElementById('fileInput').value='';
+  document.getElementById('modalError').style.display='none';
+  document.getElementById('modalSuccess').style.display='none';
+  document.getElementById('authStep').style.display='block';
+  document.getElementById('uploadStep').style.display='none';
+  setTimeout(()=>document.getElementById('pwdInput').focus(),100);
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('active')}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal()}
+function showErr(m){const el=document.getElementById('modalError');el.textContent=m;el.style.display='block';document.getElementById('modalSuccess').style.display='none'}
+function showOk(m){const el=document.getElementById('modalSuccess');el.textContent=m;el.style.display='block';document.getElementById('modalError').style.display='none'}
+function verifyPassword(){
+  const p=document.getElementById('pwdInput').value.trim();
+  if(!p){showErr('Password tidak boleh kosong.');return}
+  if(hashCode(p)!==PWD_HASH){showErr('Password salah. Akses ditolak.');document.getElementById('pwdInput').value='';return}
+  document.getElementById('authStep').style.display='none';
+  document.getElementById('uploadStep').style.display='block';
+  document.getElementById('modalError').style.display='none';
+  showOk('Autentikasi berhasil. Silakan upload file Excel.');
+}
+
+// ── UPLOAD & PARSE ───────────────────────────────────────────
+function processUpload(){
+  const file=document.getElementById('fileInput').files[0];
+  if(!file){showErr('Pilih file Excel terlebih dahulu.');return}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const metaSh=wb.SheetNames.find(n=>/lembar|meta|info/i.test(n))||wb.SheetNames[1];
+      const dbSh=wb.SheetNames.find(n=>/db|progres|data/i.test(n))||wb.SheetNames[0];
+      const metaWs=wb.Sheets[metaSh], dbWs=wb.Sheets[dbSh];
+      if(!metaWs||!dbWs){showErr('Sheet tidak ditemukan. Pastikan ada sheet DB_Progres dan Lembar2.');return}
+      // parse meta
+      metaInfo={};
+      XLSX.utils.sheet_to_json(metaWs,{header:1,defval:''}).forEach(r=>{
+        if(r[0]&&r[1]!==undefined) metaInfo[String(r[0]).trim().toLowerCase()]=r[1];
+      });
+      // parse data
+      const rows=XLSX.utils.sheet_to_json(dbWs,{defval:0});
+      if(!rows.length){showErr('Sheet DB_Progres kosong atau header tidak dikenali.');return}
+      rawData=rows.filter(r=>r.PML||r.PPL||r.Desa||r.SLS).map(r=>({
+        PML:String(r.PML||'').trim(),PPL:String(r.PPL||'').trim(),
+        Desa:String(r.Desa||'').trim(),SLS:String(r.SLS||'').trim(),
+        SLS_full:String(r.Desa||'').trim()+' - '+String(r.SLS||'').trim(),
+        Open:Number(r.Open)||0,Submit:Number(r.Submit)||0,
+        Reject:Number(r.Reject)||0,Approved:Number(r.Approved)||0
+      }));
+      if(!rawData.length){showErr('Tidak ada data valid di sheet DB_Progres.');return}
+      document.getElementById('lastUpdated').textContent=
+        'Update: '+new Date().toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      filteredData=[...rawData];
+      populateFilters();
+      renderAll();
+      showOk('Data berhasil dimuat! '+rawData.length+' baris ditemukan.');
+      setTimeout(closeModal,1500);
+    }catch(err){showErr('Gagal membaca file: '+err.message);console.error(err)}
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── FILTER CASCADE ───────────────────────────────────────────
+function setOpts(selId,vals,ph){
+  const sel=document.getElementById(selId), cur=sel.value;
+  sel.innerHTML=`<option value="">${ph}</option>`;
+  [...new Set(vals.filter(v=>v))].sort().forEach(v=>{
+    const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);
+  });
+  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'';
+}
+function populateFilters(){
+  setOpts('filterPML',rawData.map(r=>r.PML),'— Semua PML —');
+  setOpts('filterPPL',rawData.map(r=>r.PPL),'— Semua PPL —');
+  setOpts('filterSLS',rawData.map(r=>r.SLS_full),'— Semua SLS —');
+}
+function onFilterPML(){
+  const pml=document.getElementById('filterPML').value;
+  const pool=pml?rawData.filter(r=>r.PML===pml):rawData;
+  setOpts('filterPPL',pool.map(r=>r.PPL),'— Semua PPL —');
+  setOpts('filterSLS',pool.map(r=>r.SLS_full),'— Semua SLS —');
+  applyFilters();
+}
+function onFilterPPL(){
+  const pml=document.getElementById('filterPML').value;
+  const ppl=document.getElementById('filterPPL').value;
+  let pool=rawData;
+  if(pml) pool=pool.filter(r=>r.PML===pml);
+  if(ppl) pool=pool.filter(r=>r.PPL===ppl);
+  setOpts('filterSLS',pool.map(r=>r.SLS_full),'— Semua SLS —');
+  applyFilters();
+}
+function applyFilters(){
+  const pml=document.getElementById('filterPML').value;
+  const ppl=document.getElementById('filterPPL').value;
+  const sls=document.getElementById('filterSLS').value;
+  filteredData=rawData.filter(r=>
+    (!pml||r.PML===pml)&&(!ppl||r.PPL===ppl)&&(!sls||r.SLS_full===sls)
+  );
+  renderAll();
+}
+function resetFilters(){
+  populateFilters();
+  filteredData=[...rawData];
+  renderAll();
+}
+
+// ── RENDER ALL ───────────────────────────────────────────────
+function renderAll(){
+  document.getElementById('emptyState').style.display='none';
+  ['metaBar','summaryCards','filterBar',
+   'secRingkasan','chartsRow',
+   'secPML','barPMLSection','tblPMLSection',
+   'secPPL','barPPLSection','tblPPLSection',
+   'secSLS','barSection','tblSection'
+  ].forEach(id=>document.getElementById(id).style.display='');
+  renderMeta(); renderCards(); renderPie(); renderTblSummary();
+  renderBarPML(); renderTblPML();
+  renderBarPPL(); renderTblPPL();
+  renderBarSLS(); renderTblSLS();
+}
+
+// ── META ─────────────────────────────────────────────────────
+function renderMeta(){
+  const g=(...ks)=>{for(const k of ks){const v=metaInfo[k.toLowerCase()];if(v!==undefined&&v!=='')return v}return'—'};
+  document.getElementById('metaNamaKegiatan').textContent=g('kegiatan');
+  document.getElementById('metaTahap').textContent=g('tahap');
+  const fmtD=d=>{if(!d||d==='—')return'—';const dt=d instanceof Date?d:new Date(d);return isNaN(dt)?String(d):dt.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})};
+  const periodeRaw=g('periode'), deadlineRaw=g('deadline');
+  document.getElementById('metaPeriode').textContent=fmtD(periodeRaw);
+  document.getElementById('metaDeadline').textContent=fmtD(deadlineRaw);
+  const now=new Date();now.setHours(0,0,0,0);
+  const dl=deadlineRaw instanceof Date?deadlineRaw:new Date(deadlineRaw);
+  const sw=document.getElementById('sisaWaktu');
+  sw.className='sisa-waktu-badge';
+  if(!isNaN(dl)){
+    const d=Math.round((dl-now)/86400000);
+    if(d>3){sw.textContent=d+' hari lagi';sw.classList.add('sisa-ok')}
+    else if(d>=0){sw.textContent=d+' hari lagi ⚠';sw.classList.add('sisa-warn')}
+    else{sw.textContent='Terlewat '+Math.abs(d)+' hari';sw.classList.add('sisa-over')}
+  }else sw.textContent='—';
+}
+
+// ── SUMMARY CARDS ────────────────────────────────────────────
+function renderCards(){
+  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
+  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
+  const p=v=>g?(v/g*100).toFixed(1)+'%':'0%';
+  document.getElementById('sumOpen').textContent=o.toLocaleString('id-ID');
+  document.getElementById('sumSubmit').textContent=s.toLocaleString('id-ID');
+  document.getElementById('sumReject').textContent=r.toLocaleString('id-ID');
+  document.getElementById('sumApproved').textContent=a.toLocaleString('id-ID');
+  document.getElementById('sumOpenPct').textContent=p(o)+' dari total';
+  document.getElementById('sumSubmitPct').textContent=p(s)+' dari total';
+  document.getElementById('sumRejectPct').textContent=p(r)+' dari total';
+  document.getElementById('sumApprovedPct').textContent=p(a)+' dari total';
+}
+
+// ── PIE CHART ────────────────────────────────────────────────
+function renderPie(){
+  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
+  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
+  if(pieInst)pieInst.destroy();
+  pieInst=new Chart(document.getElementById('pieChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Open','Submit','Reject','Approved'],datasets:[{data:[o,s,r,a],backgroundColor:['#3b82f6','#f59e0b','#ef4444','#22c55e'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
+      plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>{const v=c.parsed,p=g?(v/g*100).toFixed(1):'0';return` ${c.label}: ${v.toLocaleString('id-ID')} (${p}%)`}}}}}
+  });
+}
+
+// ── SUMMARY TABLE ────────────────────────────────────────────
+function renderTblSummary(){
+  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
+  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
+  const p=v=>g?(v/g*100).toFixed(2)+'%':'0%';
+  document.querySelector('#tblSummary tbody').innerHTML=
+    [['Open',o,'badge-open'],['Submit',s,'badge-submit'],['Reject',r,'badge-reject'],['Approved',a,'badge-approved']]
+    .map(([n,v,c])=>`<tr><td><span class="badge ${c}">${n}</span></td><td><strong>${v.toLocaleString('id-ID')}</strong></td><td>${p(v)}</td></tr>`).join('');
+  document.querySelector('#tblSummary tfoot').innerHTML=
+    `<tr><td><strong>Total</strong></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td><strong>100%</strong></td></tr>`;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function agByKey(key){
+  const m={};
+  filteredData.forEach(r=>{const k=r[key]||'—';if(!m[k])m[k]={Open:0,Submit:0,Reject:0,Approved:0};m[k].Open+=r.Open;m[k].Submit+=r.Submit;m[k].Reject+=r.Reject;m[k].Approved+=r.Approved});
+  return m;
+}
+function agPPL(){
+  const m={};
+  filteredData.forEach(r=>{const k=r.PPL||'—';if(!m[k])m[k]={PML:r.PML||'—',Open:0,Submit:0,Reject:0,Approved:0};m[k].Open+=r.Open;m[k].Submit+=r.Submit;m[k].Reject+=r.Reject;m[k].Approved+=r.Approved});
+  return m;
+}
+
+// ── STACKED BAR (adaptif) ────────────────────────────────────
+function makeBar(canvasId,labels,opens,submits,rejects,approvs,oldInst){
+  if(oldInst)oldInst.destroy();
+  const cv=document.getElementById(canvasId);
+  const w=Math.max(480,labels.length*62);
+  const h=Math.min(900,Math.max(280,280+Math.max(0,labels.length-5)*26));
+  cv.style.width=w+'px'; cv.style.height=h+'px'; cv.width=w; cv.height=h;
+  return new Chart(cv.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Open',    data:opens,   backgroundColor:'#3b82f6',stack:'s'},
+      {label:'Submit',  data:submits, backgroundColor:'#f59e0b',stack:'s'},
+      {label:'Reject',  data:rejects, backgroundColor:'#ef4444',stack:'s'},
+      {label:'Approved',data:approvs, backgroundColor:'#22c55e',stack:'s'}
+    ]},
+    options:{responsive:false,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{padding:11,font:{size:11}}},
+        tooltip:{mode:'index',callbacks:{
+          title:i=>i[0].label,
+          afterBody:i=>{const t=i.reduce((s,x)=>s+x.parsed.y,0);return['─────────',`Total: ${t.toLocaleString('id-ID')}`]},
+          label:c=>{const t=c.chart.data.datasets.reduce((s,d)=>s+(d.data[c.dataIndex]||0),0);const p=t?(c.parsed.y/t*100).toFixed(1):'0';return` ${c.dataset.label}: ${c.parsed.y.toLocaleString('id-ID')} (${p}%)`}
+        }}},
+      scales:{
+        x:{stacked:true,ticks:{maxRotation:45,minRotation:25,font:{size:10}},grid:{display:false}},
+        y:{stacked:true,beginAtZero:true,grid:{color:'#e2e8f0'},ticks:{font:{size:10}}}
+      }}
+  });
+}
+
+// ── RENDER TABEL AGREGAT ────────────────────────────────────
+function renderTblAgregat(tbodySel,tfootSel,entries,spanCols){
+  let tO=0,tS=0,tR=0,tA=0;
+  document.querySelector(tbodySel).innerHTML=entries.map(({prefixCols,v})=>{
+    const tot=v.Open+v.Submit+v.Reject+v.Approved;
+    const p=x=>tot?(x/tot*100).toFixed(1)+'%':'0%';
+    tO+=v.Open;tS+=v.Submit;tR+=v.Reject;tA+=v.Approved;
+    return`<tr>${prefixCols.map(c=>`<td>${c}</td>`).join('')}<td>${v.Open.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Open)}</span></td><td>${v.Submit.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Submit)}</span></td><td>${v.Reject.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Reject)}</span></td><td>${v.Approved.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Approved)}</span></td><td><strong>${tot.toLocaleString('id-ID')}</strong></td><td class="pct">${p(v.Open)}</td><td class="pct">${p(v.Submit)}</td><td class="pct">${p(v.Reject)}</td><td class="pct">${p(v.Approved)}</td></tr>`;
+  }).join('');
+  const g=tO+tS+tR+tA,pg=x=>g?(x/g*100).toFixed(1)+'%':'0%';
+  document.querySelector(tfootSel).innerHTML=`<tr><td colspan="${spanCols}"><strong>TOTAL</strong></td><td>${tO.toLocaleString('id-ID')}<br/><span class="pct">${pg(tO)}</span></td><td>${tS.toLocaleString('id-ID')}<br/><span class="pct">${pg(tS)}</span></td><td>${tR.toLocaleString('id-ID')}<br/><span class="pct">${pg(tR)}</span></td><td>${tA.toLocaleString('id-ID')}<br/><span class="pct">${pg(tA)}</span></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td class="pct">${pg(tO)}</td><td class="pct">${pg(tS)}</td><td class="pct">${pg(tR)}</td><td class="pct">${pg(tA)}</td></tr>`;
+}
+
+// ── PER PML ──────────────────────────────────────────────────
+function renderBarPML(){
+  const m=agByKey('PML'),l=Object.keys(m).sort();
+  barPMLInst=makeBar('barChartPML',l,l.map(k=>m[k].Open),l.map(k=>m[k].Submit),l.map(k=>m[k].Reject),l.map(k=>m[k].Approved),barPMLInst);
+}
+function renderTblPML(){
+  const m=agByKey('PML');
+  renderTblAgregat('#tblPML tbody','#tblPML tfoot',
+    Object.keys(m).sort().map(k=>({prefixCols:[k],v:m[k]})),1);
+}
+
+// ── PER PPL ──────────────────────────────────────────────────
+function renderBarPPL(){
+  const m=agPPL(),l=Object.keys(m).sort();
+  barPPLInst=makeBar('barChartPPL',l,l.map(k=>m[k].Open),l.map(k=>m[k].Submit),l.map(k=>m[k].Reject),l.map(k=>m[k].Approved),barPPLInst);
+}
+function renderTblPPL(){
+  const m=agPPL();
+  renderTblAgregat('#tblPPL tbody','#tblPPL tfoot',
+    Object.keys(m).sort().map(k=>({prefixCols:[m[k].PML,k],v:m[k]})),2);
+}
+
+// ── PER SLS ──────────────────────────────────────────────────
+function renderBarSLS(){
+  const l=filteredData.map(r=>r.SLS_full);
+  barSLSInst=makeBar('barChart',l,filteredData.map(r=>r.Open),filteredData.map(r=>r.Submit),filteredData.map(r=>r.Reject),filteredData.map(r=>r.Approved),barSLSInst);
+}
+function renderTblSLS(){
+  let tO=0,tS=0,tR=0,tA=0;
+  document.querySelector('#tblDetail tbody').innerHTML=filteredData.map(r=>{
+    const tot=r.Open+r.Submit+r.Reject+r.Approved;
+    const p=v=>tot?(v/tot*100).toFixed(1)+'%':'0%';
+    tO+=r.Open;tS+=r.Submit;tR+=r.Reject;tA+=r.Approved;
+    return`<tr><td>${r.PML||'—'}</td><td>${r.PPL||'—'}</td><td>${r.SLS_full}</td><td>${r.Open.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Open)}</span></td><td>${r.Submit.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Submit)}</span></td><td>${r.Reject.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Reject)}</span></td><td>${r.Approved.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Approved)}</span></td><td><strong>${tot.toLocaleString('id-ID')}</strong></td><td class="pct">${p(r.Open)}</td><td class="pct">${p(r.Submit)}</td><td class="pct">${p(r.Reject)}</td><td class="pct">${p(r.Approved)}</td></tr>`;
+  }).join('');
+  const g=tO+tS+tR+tA,pg=v=>g?(v/g*100).toFixed(1)+'%':'0%';
+  document.querySelector('#tblDetail tfoot').innerHTML=`<tr><td colspan="3"><strong>TOTAL</strong></td><td>${tO.toLocaleString('id-ID')}<br/><span class="pct">${pg(tO)}</span></td><td>${tS.toLocaleString('id-ID')}<br/><span class="pct">${pg(tS)}</span></td><td>${tR.toLocaleString('id-ID')}<br/><span class="pct">${pg(tR)}</span></td><td>${tA.toLocaleString('id-ID')}<br/><span class="pct">${pg(tA)}</span></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td class="pct">${pg(tO)}</td><td class="pct">${pg(tS)}</td><td class="pct">${pg(tR)}</td><td class="pct">${pg(tA)}</td></tr>`;
+}
+</script>
+</body>
+</html>
