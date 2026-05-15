@@ -1,496 +1,1171 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DASHBOARD SURVEI ANGKATAN KERJA NASIONAL (SAKERNAS)</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --primary:#1a3c6e; --primary-light:#2563a8; --accent:#e8a020;
-      --bg:#f0f4f8; --card:#ffffff; --text:#1e293b; --text-muted:#64748b;
-      --border:#e2e8f0; --open:#3b82f6; --submit:#f59e0b;
-      --reject:#ef4444; --approved:#22c55e;
-      --success-bg:#dcfce7; --success-border:#86efac;
-      --warning-bg:#fef9c3; --warning-border:#fde047;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-    /* HEADER */
-    .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;padding:16px 30px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.18)}
-    .header-left{display:flex;align-items:center;gap:14px}
-    .header-logo{width:44px;height:44px;background:rgba(255,255,255,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-    .header-title{font-size:1.12rem;font-weight:700;letter-spacing:.02em}
-    .header-subtitle{font-size:.78rem;opacity:.8;margin-top:2px}
-    .header-right{display:flex;align-items:center;gap:10px}
-    .btn-update{background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s,transform .1s}
-    .btn-update:hover{background:#c87d10;transform:translateY(-1px)}
-    .last-updated{font-size:.76rem;color:rgba(255,255,255,.7)}
-    /* MAIN */
-    .main{padding:22px 30px;max-width:1500px;margin:0 auto}
-    /* INFO CARDS */
-    .info-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
-    .info-card{background:var(--card);border-radius:12px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.08);border-left:4px solid var(--primary)}
-    .info-card.open{border-left-color:var(--open)}.info-card.submit{border-left-color:var(--submit)}
-    .info-card.reject{border-left-color:var(--reject)}.info-card.approved{border-left-color:var(--approved)}
-    .info-card-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:4px}
-    .info-card-value{font-size:1.75rem;font-weight:800;line-height:1}
-    .info-card-sub{font-size:.78rem;color:var(--text-muted);margin-top:3px}
-    .info-card.open .info-card-value{color:var(--open)}.info-card.submit .info-card-value{color:var(--submit)}
-    .info-card.reject .info-card-value{color:var(--reject)}.info-card.approved .info-card-value{color:var(--approved)}
-    /* META BAR */
-    .meta-bar{background:var(--card);border-radius:12px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:center;gap:32px;box-shadow:0 1px 6px rgba(0,0,0,.07);flex-wrap:wrap}
-    .meta-item{display:flex;flex-direction:column;gap:2px}
-    .meta-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)}
-    .meta-value{font-size:.96rem;font-weight:700;color:var(--primary)}
-    .meta-deadline{color:var(--reject)}
-    .sisa-waktu-badge{padding:5px 13px;border-radius:20px;font-weight:700;font-size:.88rem}
-    .sisa-ok{background:var(--success-bg);color:#15803d;border:1px solid var(--success-border)}
-    .sisa-warn{background:var(--warning-bg);color:#92400e;border:1px solid var(--warning-border)}
-    .sisa-over{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
-    /* FILTER BAR */
-    .filter-bar{background:var(--card);border-radius:12px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;box-shadow:0 1px 6px rgba(0,0,0,.07)}
-    .filter-bar .filter-label{font-size:.82rem;font-weight:700;color:var(--primary);white-space:nowrap;padding-bottom:6px}
-    .filter-group{display:flex;flex-direction:column;gap:3px}
-    .filter-group label{font-size:.68rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
-    .filter-bar select{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--text);background:var(--bg);cursor:pointer;min-width:175px}
-    .filter-bar select:focus{outline:none;border-color:var(--primary-light)}
-    .btn-reset{padding:7px 15px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:.82rem;cursor:pointer;color:var(--text-muted);font-weight:600;transition:all .15s}
-    .btn-reset:hover{background:var(--bg);border-color:var(--primary);color:var(--primary)}
-    /* SECTION DIVIDER */
-    .section-header{display:flex;align-items:center;gap:12px;margin:24px 0 13px;font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)}
-    .section-header::before,.section-header::after{content:'';flex:1;height:1.5px;background:var(--border)}
-    /* GRID */
-    .grid-2{display:grid;grid-template-columns:350px 1fr;gap:16px;margin-bottom:16px;align-items:start}
-    .grid-full{margin-bottom:16px}
-    /* CARD */
-    .card{background:var(--card);border-radius:12px;padding:16px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
-    .card-title{font-size:.86rem;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:2px solid var(--bg)}
-    /* CHART */
-    .chart-wrap{position:relative;width:100%}
-    .chart-pie{height:255px}
-    .chart-scroll{overflow-x:auto;overflow-y:hidden;width:100%}
-    .chart-scroll canvas{display:block}
-    /* TABEL */
-    .tbl-wrap{overflow-x:auto;max-height:420px;overflow-y:auto}
-    table{width:100%;border-collapse:collapse;font-size:.8rem}
-    thead tr{background:var(--primary);color:white;position:sticky;top:0;z-index:2}
-    thead th{padding:8px 9px;text-align:center;font-weight:600;letter-spacing:.03em;font-size:.74rem;white-space:nowrap}
-    thead th:first-child{text-align:left}
-    tbody tr:nth-child(even){background:#f8fafc}
-    tbody tr:hover{background:#eff6ff}
-    tbody td{padding:6px 9px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap}
-    tbody td:first-child{text-align:left;font-weight:500}
-    .tbl-footer tr{background:#e8f0fb !important;font-weight:700;position:sticky;bottom:0;z-index:2}
-    .tbl-footer td{border-top:2px solid var(--primary);color:var(--primary)}
-    .badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:.72rem;font-weight:700}
-    .badge-open{background:#dbeafe;color:#1d4ed8}.badge-submit{background:#fef3c7;color:#b45309}
-    .badge-reject{background:#fee2e2;color:#b91c1c}.badge-approved{background:#dcfce7;color:#15803d}
-    .pct{color:var(--text-muted);font-size:.73rem}
-    /* MODAL */
-    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
-    .modal-overlay.active{display:flex}
-    .modal{background:white;border-radius:16px;padding:30px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative}
-    .modal-title{font-size:1.08rem;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:8px}
-    .modal-close{position:absolute;top:13px;right:15px;background:none;border:none;font-size:1.35rem;cursor:pointer;color:var(--text-muted);line-height:1}
-    .modal-close:hover{color:var(--reject)}
-    .form-group{margin-bottom:13px}
-    .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-    .form-group input[type="password"],.form-group input[type="file"]{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;color:var(--text);transition:border-color .2s}
-    .form-group input:focus{outline:none;border-color:var(--primary-light)}
-    .form-group input[type="file"]{padding:7px;cursor:pointer}
-    .file-note{font-size:.74rem;color:var(--text-muted);margin-top:4px}
-    .btn-submit{width:100%;padding:11px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:.93rem;font-weight:700;cursor:pointer;margin-top:5px;transition:background .2s}
-    .btn-submit:hover{background:var(--primary-light)}
-    .modal-error{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:.82rem;margin-bottom:11px;display:none}
-    .modal-success{background:var(--success-bg);color:#15803d;border:1px solid var(--success-border);border-radius:8px;padding:9px 13px;font-size:.82rem;margin-bottom:11px;display:none}
-    /* EMPTY STATE */
-    .empty-state{text-align:center;padding:55px 20px;color:var(--text-muted)}
-    .empty-icon{font-size:3.2rem;margin-bottom:13px}
-    .empty-title{font-size:1.05rem;font-weight:600;margin-bottom:5px}
-    .empty-sub{font-size:.83rem}
-    /* FOOTER */
-    .footer{text-align:center;padding:14px;font-size:.75rem;color:var(--text-muted);border-top:1px solid var(--border);margin-top:6px}
-    .copyright{background:var(--primary);color:rgba(255,255,255,.82);text-align:center;padding:15px 22px;font-size:.8rem;line-height:1.7}
-    .copyright strong{display:block;color:#fff;font-size:.85rem;margin-bottom:2px}
-    .copyright .tagline{font-style:italic;opacity:.75;font-size:.75rem}
-    @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
-    @media(max-width:900px){.main{padding:13px}.info-row{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:560px){.info-row{grid-template-columns:1fr 1fr}.header{padding:11px 13px}.meta-bar{gap:13px}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Monitoring Survei</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --blue-dark: #1a3a5c;
+    --blue-mid: #1e5fa8;
+    --blue-light: #2e86de;
+    --blue-pale: #ddeeff;
+    --green: #27ae60;
+    --green-light: #d5f5e3;
+    --yellow: #f39c12;
+    --yellow-light: #fef9e7;
+    --red: #e74c3c;
+    --red-light: #fdecea;
+    --orange: #e67e22;
+    --gray: #7f8c8d;
+    --gray-light: #ecf0f1;
+    --white: #ffffff;
+    --shadow: 0 2px 8px rgba(0,0,0,0.10);
+    --shadow-hover: 0 4px 16px rgba(0,0,0,0.16);
+    --radius: 10px;
+    --font: 'Segoe UI', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: #f0f4f8; color: #2c3e50; font-size: 14px; }
+
+  /* ============ HEADER ============ */
+  .header {
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+    color: white; padding: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px 10px 28px;
+  }
+  .header-logo { display: flex; align-items: center; gap: 14px; }
+  .logo-badge {
+    background: white; color: var(--blue-dark); font-weight: 900;
+    font-size: 20px; border-radius: 8px; padding: 6px 14px;
+    letter-spacing: 2px;
+  }
+  .header-title h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+  .header-title .subtitle { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .header-clock { text-align: right; font-size: 13px; opacity: 0.9; }
+  .header-clock .clock-time { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ============ CONFIG PANEL ============ */
+  .config-bar {
+    background: rgba(255,255,255,0.10); border-top: 1px solid rgba(255,255,255,0.15);
+    padding: 10px 28px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .config-bar label { font-size: 12px; opacity: 0.85; white-space: nowrap; font-weight: 600; }
+  .config-bar input, .config-bar select {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
+    color: white; border-radius: 6px; padding: 5px 10px; font-size: 13px;
+    font-family: var(--font); outline: none;
+    transition: background 0.2s;
+  }
+  .config-bar input::placeholder { color: rgba(255,255,255,0.55); }
+  .config-bar input:focus, .config-bar select:focus {
+    background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.7);
+  }
+  .config-bar select option { background: var(--blue-dark); color: white; }
+  .config-group { display: flex; align-items: center; gap: 8px; }
+  .config-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.2); }
+  .btn-copy {
+    background: var(--yellow); color: var(--blue-dark); border: none;
+    border-radius: 6px; padding: 6px 16px; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    margin-left: auto;
+  }
+  .btn-copy:hover { background: #f1c40f; transform: translateY(-1px); box-shadow: var(--shadow); }
+
+  /* ============ DEADLINE BANNER ============ */
+  #deadline-banner {
+    display: none;
+    padding: 8px 28px;
+    font-size: 13px; font-weight: 600;
+    align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap;
+  }
+  .deadline-item { display: flex; align-items: center; gap: 8px; }
+  .deadline-label { opacity: 0.85; }
+  .countdown-box {
+    display: flex; gap: 6px;
+  }
+  .cbox {
+    background: rgba(255,255,255,0.15); border-radius: 6px;
+    padding: 4px 10px; text-align: center; min-width: 52px;
+  }
+  .cbox .cval { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .cbox .clabel { font-size: 9px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+  .status-urgent { background: var(--red); }
+  .status-warning { background: var(--orange); }
+  .status-ok { background: var(--green); }
+
+  /* ============ MAIN LAYOUT ============ */
+  .main { padding: 20px 24px; }
+
+  /* ============ PERIOD & FILTER BAR ============ */
+  .filter-bar {
+    background: white; border-radius: var(--radius); padding: 12px 18px;
+    box-shadow: var(--shadow); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .filter-bar .filter-title { font-weight: 700; color: var(--blue-mid); font-size: 13px; margin-right: 4px; }
+  .filter-bar select, .filter-bar input[type="date"] {
+    border: 1.5px solid #d0dce8; border-radius: 6px; padding: 5px 10px;
+    font-size: 13px; font-family: var(--font); color: #2c3e50; outline: none;
+    background: #f8fbff; transition: border 0.2s;
+  }
+  .filter-bar select:focus, .filter-bar input[type="date"]:focus { border-color: var(--blue-light); }
+  .btn-reset {
+    background: var(--gray-light); color: var(--gray); border: none;
+    border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer;
+    font-family: var(--font); transition: all 0.2s; margin-left: auto;
+  }
+  .btn-reset:hover { background: #d5d8dc; color: #2c3e50; }
+  .filter-sep { color: #ccc; }
+
+  /* ============ SCORECARD ============ */
+  .scorecard-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+    margin-bottom: 18px;
+  }
+  .scorecard {
+    background: white; border-radius: var(--radius); padding: 16px 16px 14px;
+    box-shadow: var(--shadow); border-left: 5px solid transparent;
+    transition: box-shadow 0.2s, transform 0.2s; cursor: default;
+    position: relative; overflow: hidden;
+  }
+  .scorecard:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .scorecard.total { border-color: var(--blue-mid); }
+  .scorecard.open { border-color: var(--gray); }
+  .scorecard.submitted { border-color: var(--yellow); }
+  .scorecard.rejected { border-color: var(--red); }
+  .scorecard.approved { border-color: var(--green); }
+  .sc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray); }
+  .sc-value { font-size: 32px; font-weight: 800; margin: 4px 0 2px; line-height: 1; }
+  .scorecard.total .sc-value { color: var(--blue-mid); }
+  .scorecard.open .sc-value { color: var(--gray); }
+  .scorecard.submitted .sc-value { color: var(--yellow); }
+  .scorecard.rejected .sc-value { color: var(--red); }
+  .scorecard.approved .sc-value { color: var(--green); }
+  .sc-pct { font-size: 12px; color: var(--gray); }
+  .sc-icon {
+    position: absolute; right: 12px; top: 12px;
+    font-size: 28px; opacity: 0.10;
+  }
+  .sc-bar-bg { height: 4px; background: #eee; border-radius: 2px; margin-top: 8px; }
+  .sc-bar { height: 4px; border-radius: 2px; transition: width 0.7s ease; }
+  .scorecard.total .sc-bar { background: var(--blue-mid); }
+  .scorecard.submitted .sc-bar { background: var(--yellow); }
+  .scorecard.rejected .sc-bar { background: var(--red); }
+  .scorecard.approved .sc-bar { background: var(--green); }
+
+  /* ============ PROGRESS OVERALL ============ */
+  .progress-section {
+    background: white; border-radius: var(--radius); padding: 16px 20px;
+    box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .progress-section h3 { font-size: 14px; font-weight: 700; color: var(--blue-dark); margin-bottom: 12px; }
+  .progress-stack { height: 26px; border-radius: 6px; overflow: hidden; display: flex; width: 100%; background: #eee; }
+  .progress-seg { height: 100%; transition: width 0.7s ease; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; }
+  .ps-approved { background: var(--green); }
+  .ps-submitted { background: var(--yellow); }
+  .ps-rejected { background: var(--red); }
+  .ps-open { background: #bdc3c7; }
+  .progress-legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ============ CHARTS ROW ============ */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .chart-card {
+    background: white; border-radius: var(--radius); padding: 16px 16px 10px;
+    box-shadow: var(--shadow);
+  }
+  .chart-card h3 { font-size: 13px; font-weight: 700; color: var(--blue-dark); margin-bottom: 10px; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ============ TABLE ============ */
+  .table-section {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 10px; border-bottom: 1px solid #e8edf2;
+  }
+  .table-header h3 { font-size: 14px; font-weight: 700; color: var(--blue-dark); }
+  .table-search {
+    border: 1.5px solid #d0dce8; border-radius: 6px; padding: 5px 10px;
+    font-size: 12px; font-family: var(--font); outline: none; width: 200px;
+  }
+  .table-search:focus { border-color: var(--blue-light); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead tr { background: var(--blue-dark); color: white; }
+  thead th {
+    padding: 10px 12px; text-align: left; font-weight: 600;
+    font-size: 11.5px; letter-spacing: 0.3px; white-space: nowrap;
+    cursor: pointer; user-select: none; position: relative;
+  }
+  thead th:hover { background: var(--blue-mid); }
+  thead th.sorted-asc::after { content: ' ↑'; opacity: 0.8; }
+  thead th.sorted-desc::after { content: ' ↓'; opacity: 0.8; }
+  tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.12s; }
+  tbody tr:hover { background: #f5f9ff; }
+  tbody td { padding: 8px 12px; color: #2c3e50; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-approved { background: var(--green-light); color: var(--green); }
+  .badge-submitted { background: var(--yellow-light); color: var(--orange); }
+  .badge-rejected { background: var(--red-light); color: var(--red); }
+  .badge-open { background: var(--gray-light); color: var(--gray); }
+  .pct-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .pct-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; min-width: 60px; }
+  .pct-bar-fill { height: 6px; border-radius: 3px; background: var(--green); }
+  .pct-text { font-size: 11px; color: var(--gray); min-width: 36px; text-align: right; }
+  .table-footer {
+    padding: 8px 18px; font-size: 12px; color: var(--gray);
+    border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* ============ PENGAWAS TABLE ============ */
+  .pengawas-section { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+
+  /* ============ MODAL ============ */
+  .modal-overlay {
+    display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: white; border-radius: 12px; padding: 28px 32px; max-width: 540px; width: 92%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .modal h2 { font-size: 18px; color: var(--blue-dark); margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--gray); margin-bottom: 18px; }
+  .modal-form label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .modal-form input, .modal-form select {
+    width: 100%; border: 1.5px solid #d0dce8; border-radius: 6px;
+    padding: 7px 12px; font-size: 13px; font-family: var(--font); outline: none; margin-bottom: 14px;
+  }
+  .modal-form input:focus, .modal-form select:focus { border-color: var(--blue-light); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+  .btn-primary {
+    background: var(--blue-mid); color: white; border: none;
+    border-radius: 6px; padding: 8px 20px; font-weight: 700; font-size: 13px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--blue-light); }
+  .btn-secondary {
+    background: var(--gray-light); color: #555; border: none;
+    border-radius: 6px; padding: 8px 16px; font-size: 13px;
+    cursor: pointer; font-family: var(--font); transition: background 0.2s;
+  }
+  .btn-secondary:hover { background: #d5d8dc; }
+
+  /* ============ FOOTER ============ */
+  .footer { text-align: center; padding: 14px; font-size: 11px; color: #aaa; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .scorecard-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-row, .pengawas-section { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .scorecard-grid { grid-template-columns: repeat(2, 1fr); }
+    .header-top { flex-direction: column; gap: 8px; text-align: center; }
+    .config-bar { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ============ NO DATA ============ */
+  .no-data { text-align: center; padding: 30px; color: var(--gray); font-size: 13px; }
+
+  /* Print */
+  @media print {
+    .btn-copy, .btn-reset, .modal-overlay, .config-bar .btn-copy { display: none; }
+    body { background: white; }
+    .main { padding: 8px; }
+  }
+</style>
 </head>
 <body>
+
+<!-- ============ HEADER ============ -->
 <div class="header">
-  <div class="header-left">
-    <div class="header-logo">📊</div>
-    <div>
-      <div class="header-title">DASHBOARD SURVEI ANGKATAN KERJA NASIONAL (SAKERNAS)</div>
-      <div class="header-subtitle">BPS Kabupaten Balangan</div>
+  <div class="header-top">
+    <div class="header-logo">
+      <div class="logo-badge">BPS</div>
+      <div class="header-title">
+        <h1 id="header-nama-kegiatan">Dashboard Monitoring Survei</h1>
+        <div class="subtitle" id="header-subtitle">Sistem Pemantauan Progress Pendataan & Pemutakhiran</div>
+      </div>
+    </div>
+    <div class="header-clock">
+      <div class="clock-time" id="clock-time">--:--:--</div>
+      <div id="clock-date" style="font-size:12px;opacity:0.75;"></div>
     </div>
   </div>
-  <div class="header-right">
-    <span class="last-updated" id="lastUpdated">Belum ada data</span>
-    <button class="btn-update" onclick="openModal()">⬆ Update Data</button>
+
+  <!-- Config / Input Panel -->
+  <div class="config-bar">
+    <div class="config-group">
+      <label>📋 Nama Kegiatan:</label>
+      <input type="text" id="input-nama-kegiatan" placeholder="Contoh: SUPAS 2025" style="width:180px;" />
+    </div>
+    <div class="config-sep"></div>
+    <div class="config-group">
+      <label>📅 Deadline Pendataan:</label>
+      <input type="date" id="input-deadline-pendataan" />
+    </div>
+    <div class="config-group">
+      <label>📅 Deadline Pemutakhiran:</label>
+      <input type="date" id="input-deadline-pemutakhiran" />
+    </div>
+    <div class="config-sep"></div>
+    <div class="config-group">
+      <label>📊 Periode Data:</label>
+      <input type="text" id="input-periode" placeholder="Contoh: Mei 2025" style="width:130px;" />
+    </div>
+    <button class="btn-copy" onclick="openCopyModal()">⧉ Salin untuk Kegiatan Baru</button>
+  </div>
+
+  <!-- Deadline Banner -->
+  <div id="deadline-banner">
+    <div class="deadline-item" id="banner-pendataan" style="display:none;">
+      <span class="deadline-label">⏳ Sisa Waktu Pendataan:</span>
+      <div class="countdown-box" id="cd-pendataan">
+        <div class="cbox"><div class="cval" id="cd-p-hari">--</div><div class="clabel">Hari</div></div>
+        <div class="cbox"><div class="cval" id="cd-p-jam">--</div><div class="clabel">Jam</div></div>
+        <div class="cbox"><div class="cval" id="cd-p-menit">--</div><div class="clabel">Menit</div></div>
+        <div class="cbox"><div class="cval" id="cd-p-detik">--</div><div class="clabel">Detik</div></div>
+      </div>
+    </div>
+    <div class="deadline-item" id="banner-pemutakhiran" style="display:none;">
+      <span class="deadline-label">⏳ Sisa Waktu Pemutakhiran:</span>
+      <div class="countdown-box" id="cd-pemutakhiran">
+        <div class="cbox"><div class="cval" id="cd-m-hari">--</div><div class="clabel">Hari</div></div>
+        <div class="cbox"><div class="cval" id="cd-m-jam">--</div><div class="clabel">Jam</div></div>
+        <div class="cbox"><div class="cval" id="cd-m-menit">--</div><div class="clabel">Menit</div></div>
+        <div class="cbox"><div class="cval" id="cd-m-detik">--</div><div class="clabel">Detik</div></div>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- ============ MAIN ============ -->
 <div class="main">
-  <div class="meta-bar" id="metaBar" style="display:none">
-    <div class="meta-item"><span class="meta-label">Nama Kegiatan</span><span class="meta-value" id="metaNamaKegiatan">—</span></div>
-    <div class="meta-item"><span class="meta-label">Tahap</span><span class="meta-value" id="metaTahap">—</span></div>
-    <div class="meta-item"><span class="meta-label">Periode Data</span><span class="meta-value" id="metaPeriode">—</span></div>
-    <div class="meta-item"><span class="meta-label">Deadline</span><span class="meta-value meta-deadline" id="metaDeadline">—</span></div>
-    <div class="meta-item"><span class="meta-label">Sisa Waktu</span><span class="sisa-waktu-badge" id="sisaWaktu">—</span></div>
-  </div>
-  <div class="info-row" id="summaryCards" style="display:none">
-    <div class="info-card open"><div class="info-card-label">Open</div><div class="info-card-value" id="sumOpen">0</div><div class="info-card-sub" id="sumOpenPct">0%</div></div>
-    <div class="info-card submit"><div class="info-card-label">Submit</div><div class="info-card-value" id="sumSubmit">0</div><div class="info-card-sub" id="sumSubmitPct">0%</div></div>
-    <div class="info-card reject"><div class="info-card-label">Reject</div><div class="info-card-value" id="sumReject">0</div><div class="info-card-sub" id="sumRejectPct">0%</div></div>
-    <div class="info-card approved"><div class="info-card-label">Approved</div><div class="info-card-value" id="sumApproved">0</div><div class="info-card-sub" id="sumApprovedPct">0%</div></div>
-  </div>
-  <div class="filter-bar" id="filterBar" style="display:none">
-    <span class="filter-label">🔍 Filter:</span>
-    <div class="filter-group"><label>PML</label><select id="filterPML" onchange="onFilterPML()"><option value="">— Semua PML —</option></select></div>
-    <div class="filter-group"><label>PPL</label><select id="filterPPL" onchange="onFilterPPL()"><option value="">— Semua PPL —</option></select></div>
-    <div class="filter-group"><label>SLS</label><select id="filterSLS" onchange="applyFilters()"><option value="">— Semua SLS —</option></select></div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <span class="filter-title">🔍 Filter:</span>
+    <label style="font-size:12px;color:#555;white-space:nowrap;">Pengawas:</label>
+    <select id="filter-pengawas">
+      <option value="">Semua Pengawas</option>
+    </select>
+    <span class="filter-sep">|</span>
+    <label style="font-size:12px;color:#555;white-space:nowrap;">Kecamatan:</label>
+    <select id="filter-kecamatan">
+      <option value="">Semua Kecamatan</option>
+    </select>
+    <span class="filter-sep">|</span>
+    <label style="font-size:12px;color:#555;white-space:nowrap;">Status:</label>
+    <select id="filter-status">
+      <option value="">Semua Status</option>
+      <option value="approved">Approved</option>
+      <option value="submitted">Submitted</option>
+      <option value="rejected">Rejected</option>
+      <option value="open">Open</option>
+    </select>
     <button class="btn-reset" onclick="resetFilters()">↺ Reset Filter</button>
+    <span style="font-size:11px;color:#aaa;margin-left:8px;" id="filter-info"></span>
   </div>
-  <div id="emptyState" class="card"><div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">Belum Ada Data</div><div class="empty-sub">Klik tombol <strong>⬆ Update Data</strong> untuk mengupload file Excel dan menampilkan dashboard.</div></div></div>
-  <!-- RINGKASAN -->
-  <div class="section-header" id="secRingkasan" style="display:none">Ringkasan Keseluruhan</div>
-  <div class="grid-2" id="chartsRow" style="display:none">
-    <div class="card"><div class="card-title">🥧 Distribusi Status Assignment</div><div class="chart-wrap chart-pie"><canvas id="pieChart"></canvas></div></div>
-    <div class="card"><div class="card-title">📋 Tabulasi Status Assignment</div>
-      <div class="tbl-wrap" style="max-height:none">
-        <table id="tblSummary"><thead><tr><th style="text-align:left">Status</th><th>Jumlah</th><th>Persentase</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table>
-      </div></div>
+
+  <!-- Scorecard -->
+  <div class="scorecard-grid">
+    <div class="scorecard total">
+      <div class="sc-label">Total Sampel</div>
+      <div class="sc-value" id="sc-total">0</div>
+      <div class="sc-pct" id="sc-total-sub">0 SubSLS</div>
+      <div class="sc-icon">📋</div>
+      <div class="sc-bar-bg"><div class="sc-bar" id="bar-total" style="width:100%"></div></div>
+    </div>
+    <div class="scorecard open">
+      <div class="sc-label">Open</div>
+      <div class="sc-value" id="sc-open">0</div>
+      <div class="sc-pct" id="pct-open">0%</div>
+      <div class="sc-icon">🔓</div>
+      <div class="sc-bar-bg"><div class="sc-bar" style="background:#bdc3c7;width:0%" id="bar-open"></div></div>
+    </div>
+    <div class="scorecard submitted">
+      <div class="sc-label">Submitted</div>
+      <div class="sc-value" id="sc-submitted">0</div>
+      <div class="sc-pct" id="pct-submitted">0%</div>
+      <div class="sc-icon">📤</div>
+      <div class="sc-bar-bg"><div class="sc-bar" id="bar-submitted" style="width:0%"></div></div>
+    </div>
+    <div class="scorecard rejected">
+      <div class="sc-label">Rejected PML</div>
+      <div class="sc-value" id="sc-rejected">0</div>
+      <div class="sc-pct" id="pct-rejected">0%</div>
+      <div class="sc-icon">❌</div>
+      <div class="sc-bar-bg"><div class="sc-bar" id="bar-rejected" style="width:0%"></div></div>
+    </div>
+    <div class="scorecard approved">
+      <div class="sc-label">Approved PML</div>
+      <div class="sc-value" id="sc-approved">0</div>
+      <div class="sc-pct" id="pct-approved">0%</div>
+      <div class="sc-icon">✅</div>
+      <div class="sc-bar-bg"><div class="sc-bar" id="bar-approved" style="width:0%"></div></div>
+    </div>
   </div>
-  <!-- PER PML -->
-  <div class="section-header" id="secPML" style="display:none">Per PML</div>
-  <div class="grid-full card" id="barPMLSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per PML</div><div class="chart-scroll"><canvas id="barChartPML"></canvas></div></div>
-  <div class="grid-full card" id="tblPMLSection" style="display:none"><div class="card-title">📄 Tabulasi Status Assignment per PML</div>
-    <div class="tbl-wrap"><table id="tblPML"><thead><tr><th style="text-align:left">PML</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+
+  <!-- Overall Progress -->
+  <div class="progress-section">
+    <h3>📊 Progress Keseluruhan</h3>
+    <div class="progress-stack" id="progress-stack">
+      <div class="progress-seg ps-approved" id="prog-approved" style="width:0%"></div>
+      <div class="progress-seg ps-submitted" id="prog-submitted" style="width:0%"></div>
+      <div class="progress-seg ps-rejected" id="prog-rejected" style="width:0%"></div>
+      <div class="progress-seg ps-open" id="prog-open" style="width:0%"></div>
+    </div>
+    <div class="progress-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Approved (<span id="leg-approved">0</span>)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Submitted (<span id="leg-submitted">0</span>)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Rejected (<span id="leg-rejected">0</span>)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#bdc3c7"></div>Open (<span id="leg-open">0</span>)</div>
+    </div>
   </div>
-  <!-- PER PPL -->
-  <div class="section-header" id="secPPL" style="display:none">Per PPL</div>
-  <div class="grid-full card" id="barPPLSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per PPL</div><div class="chart-scroll"><canvas id="barChartPPL"></canvas></div></div>
-  <div class="grid-full card" id="tblPPLSection" style="display:none"><div class="card-title">📄 Tabulasi Status Assignment per PPL</div>
-    <div class="tbl-wrap"><table id="tblPPL"><thead><tr><th style="text-align:left">PML</th><th style="text-align:left">PPL</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📈 Progress per Kecamatan</h3>
+      <div class="chart-wrap"><canvas id="chartKecamatan"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>📊 Distribusi Status</h3>
+      <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+    </div>
   </div>
-  <!-- PER SLS -->
-  <div class="section-header" id="secSLS" style="display:none">Per SLS</div>
-  <div class="grid-full card" id="barSection" style="display:none"><div class="card-title">📊 Stacked Bar Chart — Status Assignment per SLS</div><div class="chart-scroll"><canvas id="barChart"></canvas></div></div>
-  <div class="grid-full card" id="tblSection" style="display:none"><div class="card-title">📄 Tabulasi Detail per PML / PPL / SLS</div>
-    <div class="tbl-wrap"><table id="tblDetail"><thead><tr><th style="text-align:left">PML</th><th style="text-align:left">PPL</th><th style="text-align:left">SLS</th><th>Open</th><th>Submit</th><th>Reject</th><th>Approved</th><th>Total</th><th>% Open</th><th>% Submit</th><th>% Reject</th><th>% Approved</th></tr></thead><tbody></tbody><tfoot class="tbl-footer"></tfoot></table></div>
+
+  <!-- Pengawas & Pencacah Summary -->
+  <div class="pengawas-section">
+    <div class="table-section">
+      <div class="table-header">
+        <h3>👷 Rekapitulasi per Pengawas</h3>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pengawas</th>
+              <th style="text-align:center;">Total</th>
+              <th style="text-align:center;">Approved</th>
+              <th style="text-align:center;">Submitted</th>
+              <th style="text-align:center;">Rejected</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pengawas"></tbody>
+        </table>
+        <div class="no-data" id="no-pengawas" style="display:none;">Tidak ada data</div>
+      </div>
+    </div>
+    <div class="table-section">
+      <div class="table-header">
+        <h3>🗺️ Rekapitulasi per Kecamatan</h3>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Kecamatan</th>
+              <th style="text-align:center;">Total</th>
+              <th style="text-align:center;">Approved</th>
+              <th style="text-align:center;">Submitted</th>
+              <th style="text-align:center;">Rejected</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-kecamatan"></tbody>
+        </table>
+        <div class="no-data" id="no-kecamatan" style="display:none;">Tidak ada data</div>
+      </div>
+    </div>
   </div>
+
+  <!-- Detail Table -->
+  <div class="table-section">
+    <div class="table-header">
+      <h3>📋 Data Detail per SubSLS</h3>
+      <input class="table-search" id="table-search" type="text" placeholder="Cari pengawas, desa, subsls..." oninput="renderTable()">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('no')">No</th>
+            <th onclick="sortTable('pengawas')">Pengawas</th>
+            <th onclick="sortTable('pencacah')">Pencacah</th>
+            <th onclick="sortTable('kecamatan')">Kecamatan</th>
+            <th onclick="sortTable('desa')">Desa</th>
+            <th onclick="sortTable('subsls')">SubSLS</th>
+            <th onclick="sortTable('open')" style="text-align:center;">Open</th>
+            <th onclick="sortTable('submitted')" style="text-align:center;">Submitted</th>
+            <th onclick="sortTable('rejected')" style="text-align:center;">Rejected</th>
+            <th onclick="sortTable('revoked')" style="text-align:center;">Revoked</th>
+            <th onclick="sortTable('approved')" style="text-align:center;">Approved</th>
+            <th onclick="sortTable('total')" style="text-align:center;">Total</th>
+            <th>Status Dominan</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-detail"></tbody>
+      </table>
+      <div class="no-data" id="no-detail" style="display:none;">Tidak ada data sesuai filter</div>
+    </div>
+    <div class="table-footer">
+      <span id="table-count-info">Menampilkan 0 dari 0 baris</span>
+      <span id="table-periode-info" style="color:var(--blue-mid);font-weight:600;"></span>
+    </div>
+  </div>
+
+</div><!-- end main -->
+
+<div class="footer">
+  Dashboard Monitoring Survei | Dibuat dengan Claude &bull; Data diperbarui secara lokal
 </div>
-<div class="footer">DASHBOARD SURVEI ANGKATAN KERJA NASIONAL (SAKERNAS) &mdash; BPS Kabupaten Balangan</div>
-<div class="copyright"><strong>&copy; 2026 Tim Statistik Kependudukan dan Ketenagakerjaan BPS Kabupaten Balangan.</strong><span class="tagline">Dibuat dengan Cinta, Kopi, dan Playlist Dangdut 🎵</span></div>
-<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+
+<!-- ============ COPY MODAL ============ -->
+<div class="modal-overlay" id="modal-copy">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal()">×</button>
-    <div class="modal-title">⬆ Update Data</div>
-    <div id="modalError" class="modal-error"></div>
-    <div id="modalSuccess" class="modal-success"></div>
-    <div id="authStep">
-      <div class="form-group"><label>Password</label><input type="password" id="pwdInput" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')verifyPassword()"/></div>
-      <button class="btn-submit" onclick="verifyPassword()">🔓 Verifikasi</button>
+    <h2>⧉ Salin Dashboard untuk Kegiatan Baru</h2>
+    <p>Masukkan informasi kegiatan baru. Dashboard akan diunduh sebagai file HTML baru yang siap dipakai ulang dengan data yang dapat diperbarui.</p>
+    <div class="modal-form">
+      <label>Nama Kegiatan Baru *</label>
+      <input type="text" id="copy-nama" placeholder="Contoh: SUPAS 2026" />
+      <label>Deadline Pendataan</label>
+      <input type="date" id="copy-deadline-p" />
+      <label>Deadline Pemutakhiran</label>
+      <input type="date" id="copy-deadline-m" />
+      <label>Periode Data</label>
+      <input type="text" id="copy-periode" placeholder="Contoh: April 2026" />
     </div>
-    <div id="uploadStep" style="display:none">
-      <div class="form-group"><label>Upload File Excel</label><input type="file" id="fileInput" accept=".xlsx,.xls"/><div class="file-note">Format: .xlsx/.xls &bull; Sheet 1: <strong>DB_Progres</strong> &bull; Sheet 2: <strong>Lembar2</strong></div></div>
-      <div style="background:#f0f4f8;border-radius:8px;padding:11px;margin-bottom:13px;font-size:.77rem;color:#475569"><strong>Kolom DB_Progres:</strong> PML | PPL | Desa | SLS | Open | Submit | Reject | Approved<br/><strong>Lembar2:</strong> Kegiatan | Tahap | Periode | Deadline</div>
-      <button class="btn-submit" onclick="processUpload()">📥 Load Dashboard</button>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeCopyModal()">Batal</button>
+      <button class="btn-primary" onclick="executeCopy()">⬇ Unduh Dashboard Baru</button>
     </div>
   </div>
 </div>
+
 <script>
-// ── CONFIG ──────────────────────────────────────────────────
-function hashCode(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return h}
-const PWD_HASH = hashCode('sakernas6311');
+// ============================================================
+// DATA SOURCE — ganti/update blok ini sesuai data terbaru
+// ============================================================
+const RAW_DATA = [
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"marfaifai81@gmail.com",kecamatan:"[040] PARINGIN",desa:"[006] BALANG",subsls:"RT 001 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Abdul Khair",pencacah:"novihasanah61@gmail.com",kecamatan:"[040] PARINGIN",desa:"[013] PARINGIN KOTA",subsls:"RT 004 RW 002 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Abdul Khair",pencacah:"novihasanah61@gmail.com",kecamatan:"[040] PARINGIN",desa:"[019] SUNGAI KETAPI",subsls:"RT 002 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"nisa89159@gmail.com",kecamatan:"[040] PARINGIN",desa:"[014] PARINGIN TIMUR",subsls:"RT 009 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Helyna -",pencacah:"milianibalangan12@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[019] BATU PIRING",subsls:"RT 010 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"bahriyanor86@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[009] TELAGA PURUN",subsls:"RT 002 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"marfaifai81@gmail.com",kecamatan:"[040] PARINGIN",desa:"[001] LAMIDA BAWAH",subsls:"RT 001 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"Seli",kecamatan:"[010] LAMPIHONG",desa:"[025] KUSAMBI HILIR",subsls:"RT 001 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Abdul Khair",pencacah:"Nurul",kecamatan:"[060] HALONG",desa:"[006] BUNTU PILANDUK",subsls:"RT 002 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"Sela",kecamatan:"[010] LAMPIHONG",desa:"[016] HILIR PASAR",subsls:"RT 003 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"hadinorhadi3149@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[004] BAKUNG",subsls:"RT 003 - [00]",open:0,submitted:7,rejected:0,revoked:0,approved:9},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"norsidahwati05@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[006] MUNJUNG",subsls:"RT 004 - [00]",open:0,submitted:15,rejected:1,revoked:0,approved:0},
+  {pengawas:"Rahmah Riani",pencacah:"yayuyenni@gmail.com",kecamatan:"[050] JUAI",desa:"[016] BUNTU KARAU",subsls:"RT 006 - [00]",open:0,submitted:4,rejected:0,revoked:0,approved:12},
+  {pengawas:"Abdul Khair",pencacah:"Nurul",kecamatan:"[060] HALONG",desa:"[014] BANGKAL",subsls:"RT 002 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Abdul Khair",pencacah:"wiwinhendrayani70@gmail.com",kecamatan:"[060] HALONG",desa:"[011] BINJAI PUNGGAL",subsls:"RT 001 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"nisa89159@gmail.com",kecamatan:"[040] PARINGIN",desa:"[010] LAYAP",subsls:"RT 001 - [00]",open:0,submitted:14,rejected:0,revoked:0,approved:2},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"Sela",kecamatan:"[010] LAMPIHONG",desa:"[023] KUPANG",subsls:"RT 002 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Helyna -",pencacah:"milianibalangan12@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[006] MURUNG ABUIN",subsls:"RT 002 - [00]",open:0,submitted:8,rejected:0,revoked:0,approved:8},
+  {pengawas:"Rahmah Riani",pencacah:"sucirahmawati5532@gmail.com",kecamatan:"[050] JUAI",desa:"[021] LALAYAU",subsls:"RT 004 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"nurhalisahblg22@gmail.com",kecamatan:"[031] TEBING TINGGI",desa:"[003] AUH",subsls:"RT 004 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"nurhalisahblg22@gmail.com",kecamatan:"[031] TEBING TINGGI",desa:"[010] TEBING TINGGI",subsls:"RT 003 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"6311.alayna@dummy.sobat.id",pencacah:"Seli",kecamatan:"[010] LAMPIHONG",desa:"[018] MATANG HANAU",subsls:"RT 002 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Abdul Khair",pencacah:"wiwinhendrayani70@gmail.com",kecamatan:"[060] HALONG",desa:"[016] HA UWAI",subsls:"RT 003 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"Muhammad",kecamatan:"[030] AWAYAN",desa:"[003] AMBAKIYANG",subsls:"RT 001 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Amalia Dyah Ristasari",pencacah:"Muhammad",kecamatan:"[030] AWAYAN",desa:"[017] BADALUNGGA HILIR",subsls:"RT 003 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Helyna -",pencacah:"drnnjb@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[002] HALUBAU",subsls:"RT 001 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Helyna -",pencacah:"drnnjb@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[015] BUNGIN",subsls:"RT 003 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Helyna -",pencacah:"mahdianor2969@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[004] PANGGUNG",subsls:"RT 003 - [00]",open:0,submitted:6,rejected:0,revoked:0,approved:10},
+  {pengawas:"Helyna -",pencacah:"mahdianor2969@gmail.com",kecamatan:"[041] PARINGIN SELATAN",desa:"[019] BATU PIRING",subsls:"RT 014 - [00]",open:0,submitted:1,rejected:0,revoked:0,approved:15},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"hadinorhadi3149@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[009] HAMPARAYA",subsls:"RT 004 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"norsidahwati05@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[018] MAMPARI",subsls:"RT 002 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"susantibnew@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[013] BUNGUR",subsls:"RT 001 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Novia Arum Pratiwi",pencacah:"susantibnew@gmail.com",kecamatan:"[020] BATU MANDI",desa:"[017] BANUA HANYAR",subsls:"RT 002 - [00]",open:0,submitted:16,rejected:0,revoked:0,approved:0},
+  {pengawas:"Rahmah Riani",pencacah:"sucirahmawati5532@gmail.com",kecamatan:"[050] JUAI",desa:"[018] SUMBER REJEKI",subsls:"RT 002 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16},
+  {pengawas:"Rahmah Riani",pencacah:"yayuyenni@gmail.com",kecamatan:"[050] JUAI",desa:"[010] MUNGKUR UYAM",subsls:"RT 001 - [00]",open:0,submitted:0,rejected:0,revoked:0,approved:16}
+];
 
-// ── STATE ────────────────────────────────────────────────────
-let rawData=[],filteredData=[],metaInfo={};
-let pieInst=null,barPMLInst=null,barPPLInst=null,barSLSInst=null;
+// ============================================================
+// STATE
+// ============================================================
+let chartKec = null, chartDonut = null;
+let sortKey = 'kecamatan', sortAsc = true;
+let config = { namaKegiatan:'', deadlinePendataan:'', deadlinePemutakhiran:'', periode:'' };
 
-// ── MODAL ────────────────────────────────────────────────────
-function openModal(){
-  document.getElementById('modalOverlay').classList.add('active');
-  document.getElementById('pwdInput').value='';
-  document.getElementById('fileInput').value='';
-  document.getElementById('modalError').style.display='none';
-  document.getElementById('modalSuccess').style.display='none';
-  document.getElementById('authStep').style.display='block';
-  document.getElementById('uploadStep').style.display='none';
-  setTimeout(()=>document.getElementById('pwdInput').focus(),100);
-}
-function closeModal(){document.getElementById('modalOverlay').classList.remove('active')}
-function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal()}
-function showErr(m){const el=document.getElementById('modalError');el.textContent=m;el.style.display='block';document.getElementById('modalSuccess').style.display='none'}
-function showOk(m){const el=document.getElementById('modalSuccess');el.textContent=m;el.style.display='block';document.getElementById('modalError').style.display='none'}
-function verifyPassword(){
-  const p=document.getElementById('pwdInput').value.trim();
-  if(!p){showErr('Password tidak boleh kosong.');return}
-  if(hashCode(p)!==PWD_HASH){showErr('Password salah. Akses ditolak.');document.getElementById('pwdInput').value='';return}
-  document.getElementById('authStep').style.display='none';
-  document.getElementById('uploadStep').style.display='block';
-  document.getElementById('modalError').style.display='none';
-  showOk('Autentikasi berhasil. Silakan upload file Excel.');
-}
-
-// ── UPLOAD & PARSE ───────────────────────────────────────────
-function processUpload(){
-  const file=document.getElementById('fileInput').files[0];
-  if(!file){showErr('Pilih file Excel terlebih dahulu.');return}
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
-      const metaSh=wb.SheetNames.find(n=>/lembar|meta|info/i.test(n))||wb.SheetNames[1];
-      const dbSh=wb.SheetNames.find(n=>/db|progres|data/i.test(n))||wb.SheetNames[0];
-      const metaWs=wb.Sheets[metaSh], dbWs=wb.Sheets[dbSh];
-      if(!metaWs||!dbWs){showErr('Sheet tidak ditemukan. Pastikan ada sheet DB_Progres dan Lembar2.');return}
-      // parse meta
-      metaInfo={};
-      XLSX.utils.sheet_to_json(metaWs,{header:1,defval:''}).forEach(r=>{
-        if(r[0]&&r[1]!==undefined) metaInfo[String(r[0]).trim().toLowerCase()]=r[1];
-      });
-      // parse data
-      const rows=XLSX.utils.sheet_to_json(dbWs,{defval:0});
-      if(!rows.length){showErr('Sheet DB_Progres kosong atau header tidak dikenali.');return}
-      rawData=rows.filter(r=>r.PML||r.PPL||r.Desa||r.SLS).map(r=>({
-        PML:String(r.PML||'').trim(),PPL:String(r.PPL||'').trim(),
-        Desa:String(r.Desa||'').trim(),SLS:String(r.SLS||'').trim(),
-        SLS_full:String(r.Desa||'').trim()+' - '+String(r.SLS||'').trim(),
-        Open:Number(r.Open)||0,Submit:Number(r.Submit)||0,
-        Reject:Number(r.Reject)||0,Approved:Number(r.Approved)||0
-      }));
-      if(!rawData.length){showErr('Tidak ada data valid di sheet DB_Progres.');return}
-      document.getElementById('lastUpdated').textContent=
-        'Update: '+new Date().toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      filteredData=[...rawData];
-      populateFilters();
-      renderAll();
-      showOk('Data berhasil dimuat! '+rawData.length+' baris ditemukan.');
-      setTimeout(closeModal,1500);
-    }catch(err){showErr('Gagal membaca file: '+err.message);console.error(err)}
-  };
-  reader.readAsBinaryString(file);
-}
-
-// ── FILTER CASCADE ───────────────────────────────────────────
-function setOpts(selId,vals,ph){
-  const sel=document.getElementById(selId), cur=sel.value;
-  sel.innerHTML=`<option value="">${ph}</option>`;
-  [...new Set(vals.filter(v=>v))].sort().forEach(v=>{
-    const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);
-  });
-  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'';
-}
-function populateFilters(){
-  setOpts('filterPML',rawData.map(r=>r.PML),'— Semua PML —');
-  setOpts('filterPPL',rawData.map(r=>r.PPL),'— Semua PPL —');
-  setOpts('filterSLS',rawData.map(r=>r.SLS_full),'— Semua SLS —');
-}
-function onFilterPML(){
-  const pml=document.getElementById('filterPML').value;
-  const pool=pml?rawData.filter(r=>r.PML===pml):rawData;
-  setOpts('filterPPL',pool.map(r=>r.PPL),'— Semua PPL —');
-  setOpts('filterSLS',pool.map(r=>r.SLS_full),'— Semua SLS —');
-  applyFilters();
-}
-function onFilterPPL(){
-  const pml=document.getElementById('filterPML').value;
-  const ppl=document.getElementById('filterPPL').value;
-  let pool=rawData;
-  if(pml) pool=pool.filter(r=>r.PML===pml);
-  if(ppl) pool=pool.filter(r=>r.PPL===ppl);
-  setOpts('filterSLS',pool.map(r=>r.SLS_full),'— Semua SLS —');
-  applyFilters();
-}
-function applyFilters(){
-  const pml=document.getElementById('filterPML').value;
-  const ppl=document.getElementById('filterPPL').value;
-  const sls=document.getElementById('filterSLS').value;
-  filteredData=rawData.filter(r=>
-    (!pml||r.PML===pml)&&(!ppl||r.PPL===ppl)&&(!sls||r.SLS_full===sls)
-  );
-  renderAll();
-}
-function resetFilters(){
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
   populateFilters();
-  filteredData=[...rawData];
-  renderAll();
+  updateAll();
+  startClock();
+  startCountdown();
+
+  document.getElementById('input-nama-kegiatan').addEventListener('input', e => {
+    config.namaKegiatan = e.target.value;
+    saveConfig();
+    document.getElementById('header-nama-kegiatan').textContent = e.target.value || 'Dashboard Monitoring Survei';
+  });
+  document.getElementById('input-deadline-pendataan').addEventListener('change', e => {
+    config.deadlinePendataan = e.target.value; saveConfig();
+  });
+  document.getElementById('input-deadline-pemutakhiran').addEventListener('change', e => {
+    config.deadlinePemutakhiran = e.target.value; saveConfig();
+  });
+  document.getElementById('input-periode').addEventListener('input', e => {
+    config.periode = e.target.value; saveConfig();
+    document.getElementById('table-periode-info').textContent = e.target.value ? 'Periode: ' + e.target.value : '';
+  });
+  document.getElementById('filter-pengawas').addEventListener('change', updateAll);
+  document.getElementById('filter-kecamatan').addEventListener('change', updateAll);
+  document.getElementById('filter-status').addEventListener('change', updateAll);
+});
+
+// ============================================================
+// CONFIG PERSISTENCE
+// ============================================================
+function saveConfig() {
+  try { localStorage.setItem('dash_config', JSON.stringify(config)); } catch(e) {}
+}
+function loadConfig() {
+  try {
+    const s = localStorage.getItem('dash_config');
+    if (s) {
+      config = {...config, ...JSON.parse(s)};
+      if (config.namaKegiatan) {
+        document.getElementById('input-nama-kegiatan').value = config.namaKegiatan;
+        document.getElementById('header-nama-kegiatan').textContent = config.namaKegiatan;
+      }
+      if (config.deadlinePendataan) document.getElementById('input-deadline-pendataan').value = config.deadlinePendataan;
+      if (config.deadlinePemutakhiran) document.getElementById('input-deadline-pemutakhiran').value = config.deadlinePemutakhiran;
+      if (config.periode) {
+        document.getElementById('input-periode').value = config.periode;
+        document.getElementById('table-periode-info').textContent = 'Periode: ' + config.periode;
+      }
+    }
+  } catch(e) {}
 }
 
-// ── RENDER ALL ───────────────────────────────────────────────
-function renderAll(){
-  document.getElementById('emptyState').style.display='none';
-  ['metaBar','summaryCards','filterBar',
-   'secRingkasan','chartsRow',
-   'secPML','barPMLSection','tblPMLSection',
-   'secPPL','barPPLSection','tblPPLSection',
-   'secSLS','barSection','tblSection'
-  ].forEach(id=>document.getElementById(id).style.display='');
-  renderMeta(); renderCards(); renderPie(); renderTblSummary();
-  renderBarPML(); renderTblPML();
-  renderBarPPL(); renderTblPPL();
-  renderBarSLS(); renderTblSLS();
+// ============================================================
+// CLOCK
+// ============================================================
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clock-time').textContent = `${hh}:${mm}:${ss}`;
+    const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    document.getElementById('clock-date').textContent =
+      `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  tick(); setInterval(tick, 1000);
 }
 
-// ── META ─────────────────────────────────────────────────────
-function renderMeta(){
-  const g=(...ks)=>{for(const k of ks){const v=metaInfo[k.toLowerCase()];if(v!==undefined&&v!=='')return v}return'—'};
-  document.getElementById('metaNamaKegiatan').textContent=g('kegiatan');
-  document.getElementById('metaTahap').textContent=g('tahap');
-  const fmtD=d=>{if(!d||d==='—')return'—';const dt=d instanceof Date?d:new Date(d);return isNaN(dt)?String(d):dt.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})};
-  const periodeRaw=g('periode'), deadlineRaw=g('deadline');
-  document.getElementById('metaPeriode').textContent=fmtD(periodeRaw);
-  document.getElementById('metaDeadline').textContent=fmtD(deadlineRaw);
-  const now=new Date();now.setHours(0,0,0,0);
-  const dl=deadlineRaw instanceof Date?deadlineRaw:new Date(deadlineRaw);
-  const sw=document.getElementById('sisaWaktu');
-  sw.className='sisa-waktu-badge';
-  if(!isNaN(dl)){
-    const d=Math.round((dl-now)/86400000);
-    if(d>3){sw.textContent=d+' hari lagi';sw.classList.add('sisa-ok')}
-    else if(d>=0){sw.textContent=d+' hari lagi ⚠';sw.classList.add('sisa-warn')}
-    else{sw.textContent='Terlewat '+Math.abs(d)+' hari';sw.classList.add('sisa-over')}
-  }else sw.textContent='—';
+// ============================================================
+// COUNTDOWN
+// ============================================================
+function startCountdown() {
+  function tick() {
+    const dp = document.getElementById('input-deadline-pendataan').value;
+    const dm = document.getElementById('input-deadline-pemutakhiran').value;
+    const banner = document.getElementById('deadline-banner');
+    const bp = document.getElementById('banner-pendataan');
+    const bm = document.getElementById('banner-pemutakhiran');
+    let show = false;
+
+    function fillCountdown(dateStr, ids, parentEl) {
+      if (!dateStr) { parentEl.style.display = 'none'; return; }
+      const deadline = new Date(dateStr + 'T23:59:59');
+      const now = new Date();
+      const diff = deadline - now;
+      parentEl.style.display = 'flex';
+      show = true;
+      const boxes = document.querySelector('#cd-' + ids);
+      if (diff <= 0) {
+        document.getElementById('cd-'+ids.split('-')[0]+'-hari').textContent = '00';
+        document.getElementById('cd-'+ids.split('-')[0]+'-jam').textContent = '00';
+        document.getElementById('cd-'+ids.split('-')[0]+'-menit').textContent = '00';
+        document.getElementById('cd-'+ids.split('-')[0]+'-detik').textContent = '00';
+        // Color urgent
+        const cboxes = parentEl.querySelectorAll('.cbox');
+        cboxes.forEach(c => { c.className = 'cbox status-urgent'; });
+        return;
+      }
+      const hari = Math.floor(diff / 86400000);
+      const jam  = Math.floor((diff % 86400000) / 3600000);
+      const menit = Math.floor((diff % 3600000) / 60000);
+      const detik = Math.floor((diff % 60000) / 1000);
+      const prefix = ids.split('-')[0];
+      document.getElementById('cd-'+prefix+'-hari').textContent = String(hari).padStart(2,'0');
+      document.getElementById('cd-'+prefix+'-jam').textContent = String(jam).padStart(2,'0');
+      document.getElementById('cd-'+prefix+'-menit').textContent = String(menit).padStart(2,'0');
+      document.getElementById('cd-'+prefix+'-detik').textContent = String(detik).padStart(2,'0');
+      const statusClass = hari < 3 ? 'status-urgent' : (hari < 7 ? 'status-warning' : 'status-ok');
+      const cboxes = parentEl.querySelectorAll('.cbox');
+      cboxes.forEach(c => { c.className = 'cbox ' + statusClass; });
+    }
+
+    fillCountdown(dp, 'p-pendataan', bp);
+    fillCountdown(dm, 'm-pemutakhiran', bm);
+
+    banner.style.display = show ? 'flex' : 'none';
+    // set banner color based on worst status
+    if (show) {
+      const hasBoth = dp && dm;
+      const diffP = dp ? new Date(dp+'T23:59:59') - new Date() : Infinity;
+      const diffM = dm ? new Date(dm+'T23:59:59') - new Date() : Infinity;
+      const minDiff = Math.min(diffP, diffM);
+      const daysLeft = minDiff / 86400000;
+      banner.style.background = daysLeft < 3 ? 'var(--red)' : (daysLeft < 7 ? 'var(--orange)' : 'var(--green)');
+      banner.style.color = 'white';
+    }
+  }
+  tick(); setInterval(tick, 1000);
 }
 
-// ── SUMMARY CARDS ────────────────────────────────────────────
-function renderCards(){
-  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
-  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
-  const p=v=>g?(v/g*100).toFixed(1)+'%':'0%';
-  document.getElementById('sumOpen').textContent=o.toLocaleString('id-ID');
-  document.getElementById('sumSubmit').textContent=s.toLocaleString('id-ID');
-  document.getElementById('sumReject').textContent=r.toLocaleString('id-ID');
-  document.getElementById('sumApproved').textContent=a.toLocaleString('id-ID');
-  document.getElementById('sumOpenPct').textContent=p(o)+' dari total';
-  document.getElementById('sumSubmitPct').textContent=p(s)+' dari total';
-  document.getElementById('sumRejectPct').textContent=p(r)+' dari total';
-  document.getElementById('sumApprovedPct').textContent=p(a)+' dari total';
+// ============================================================
+// FILTERS
+// ============================================================
+function populateFilters() {
+  const pengawasSet = [...new Set(RAW_DATA.map(d=>d.pengawas))].sort();
+  const kecamatanSet = [...new Set(RAW_DATA.map(d=>d.kecamatan))].sort();
+  const fp = document.getElementById('filter-pengawas');
+  const fk = document.getElementById('filter-kecamatan');
+  pengawasSet.forEach(p => { const o=document.createElement('option'); o.value=p; o.textContent=p; fp.appendChild(o); });
+  kecamatanSet.forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; fk.appendChild(o); });
 }
 
-// ── PIE CHART ────────────────────────────────────────────────
-function renderPie(){
-  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
-  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
-  if(pieInst)pieInst.destroy();
-  pieInst=new Chart(document.getElementById('pieChart').getContext('2d'),{
+function getFiltered() {
+  const fp = document.getElementById('filter-pengawas').value;
+  const fk = document.getElementById('filter-kecamatan').value;
+  const fs = document.getElementById('filter-status').value;
+  return RAW_DATA.filter(d => {
+    if (fp && d.pengawas !== fp) return false;
+    if (fk && d.kecamatan !== fk) return false;
+    if (fs) {
+      if (fs==='approved' && d.approved === 0) return false;
+      if (fs==='submitted' && d.submitted === 0) return false;
+      if (fs==='rejected' && d.rejected === 0) return false;
+      if (fs==='open' && d.open === 0) return false;
+    }
+    return true;
+  });
+}
+
+function resetFilters() {
+  document.getElementById('filter-pengawas').value = '';
+  document.getElementById('filter-kecamatan').value = '';
+  document.getElementById('filter-status').value = '';
+  document.getElementById('table-search').value = '';
+  updateAll();
+}
+
+// ============================================================
+// MAIN UPDATE
+// ============================================================
+function updateAll() {
+  const data = getFiltered();
+  updateScorecards(data);
+  updateProgress(data);
+  updateCharts(data);
+  renderPengawasTable(data);
+  renderKecamatanTable(data);
+  renderTable();
+  updateFilterInfo(data);
+}
+
+function updateFilterInfo(data) {
+  const total = RAW_DATA.length;
+  const filtered = data.length;
+  const el = document.getElementById('filter-info');
+  el.textContent = filtered < total ? `Menampilkan ${filtered} dari ${total} SubSLS` : '';
+}
+
+// ============================================================
+// SCORECARDS
+// ============================================================
+function updateScorecards(data) {
+  const tot_open = data.reduce((s,d)=>s+d.open,0);
+  const tot_sub  = data.reduce((s,d)=>s+d.submitted,0);
+  const tot_rej  = data.reduce((s,d)=>s+d.rejected,0);
+  const tot_rev  = data.reduce((s,d)=>s+d.revoked,0);
+  const tot_app  = data.reduce((s,d)=>s+d.approved,0);
+  const total    = tot_open + tot_sub + tot_rej + tot_rev + tot_app;
+  const subsls   = data.length;
+  const pct = v => total > 0 ? (v/total*100).toFixed(1)+'%' : '0%';
+
+  document.getElementById('sc-total').textContent = total.toLocaleString('id-ID');
+  document.getElementById('sc-total-sub').textContent = subsls + ' SubSLS';
+  document.getElementById('sc-open').textContent = tot_open.toLocaleString('id-ID');
+  document.getElementById('pct-open').textContent = pct(tot_open);
+  document.getElementById('sc-submitted').textContent = tot_sub.toLocaleString('id-ID');
+  document.getElementById('pct-submitted').textContent = pct(tot_sub);
+  document.getElementById('sc-rejected').textContent = tot_rej.toLocaleString('id-ID');
+  document.getElementById('pct-rejected').textContent = pct(tot_rej);
+  document.getElementById('sc-approved').textContent = tot_app.toLocaleString('id-ID');
+  document.getElementById('pct-approved').textContent = pct(tot_app);
+
+  // Mini bars
+  const pctN = v => total > 0 ? (v/total*100) : 0;
+  document.getElementById('bar-open').style.width = pctN(tot_open)+'%';
+  document.getElementById('bar-submitted').style.width = pctN(tot_sub)+'%';
+  document.getElementById('bar-rejected').style.width = pctN(tot_rej)+'%';
+  document.getElementById('bar-approved').style.width = pctN(tot_app)+'%';
+}
+
+// ============================================================
+// PROGRESS BAR
+// ============================================================
+function updateProgress(data) {
+  const tot_open = data.reduce((s,d)=>s+d.open,0);
+  const tot_sub  = data.reduce((s,d)=>s+d.submitted,0);
+  const tot_rej  = data.reduce((s,d)=>s+d.rejected,0);
+  const tot_app  = data.reduce((s,d)=>s+d.approved,0);
+  const total    = tot_open + tot_sub + tot_rej + tot_app;
+
+  function setW(id, val) {
+    const pct = total > 0 ? (val/total*100) : 0;
+    const el = document.getElementById(id);
+    el.style.width = pct + '%';
+    el.textContent = pct >= 6 ? (pct.toFixed(1)+'%') : '';
+  }
+  setW('prog-approved', tot_app);
+  setW('prog-submitted', tot_sub);
+  setW('prog-rejected', tot_rej);
+  setW('prog-open', tot_open);
+
+  document.getElementById('leg-approved').textContent = tot_app.toLocaleString('id-ID');
+  document.getElementById('leg-submitted').textContent = tot_sub.toLocaleString('id-ID');
+  document.getElementById('leg-rejected').textContent = tot_rej.toLocaleString('id-ID');
+  document.getElementById('leg-open').textContent = tot_open.toLocaleString('id-ID');
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function updateCharts(data) {
+  // Per Kecamatan - Horizontal Bar
+  const kecMap = {};
+  data.forEach(d => {
+    if (!kecMap[d.kecamatan]) kecMap[d.kecamatan] = {approved:0,submitted:0,rejected:0,open:0};
+    kecMap[d.kecamatan].approved += d.approved;
+    kecMap[d.kecamatan].submitted += d.submitted;
+    kecMap[d.kecamatan].rejected += d.rejected;
+    kecMap[d.kecamatan].open += d.open;
+  });
+  const kecNames = Object.keys(kecMap).sort().map(k => k.replace(/^\[\d+\]\s*/,''));
+  const kecKeys = Object.keys(kecMap).sort();
+  const kecApp  = kecKeys.map(k=>kecMap[k].approved);
+  const kecSub  = kecKeys.map(k=>kecMap[k].submitted);
+  const kecRej  = kecKeys.map(k=>kecMap[k].rejected);
+  const kecOpen = kecKeys.map(k=>kecMap[k].open);
+
+  if (chartKec) chartKec.destroy();
+  const ctx1 = document.getElementById('chartKecamatan').getContext('2d');
+  chartKec = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: kecNames,
+      datasets: [
+        { label:'Approved', data:kecApp, backgroundColor:'rgba(39,174,96,0.85)', borderRadius:3 },
+        { label:'Submitted', data:kecSub, backgroundColor:'rgba(243,156,18,0.85)', borderRadius:3 },
+        { label:'Rejected', data:kecRej, backgroundColor:'rgba(231,76,60,0.85)', borderRadius:3 },
+        { label:'Open', data:kecOpen, backgroundColor:'rgba(189,195,199,0.85)', borderRadius:3 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      indexAxis:'y',
+      scales: {
+        x: { stacked:true, grid:{color:'#f0f0f0'}, ticks:{font:{size:11}} },
+        y: { stacked:true, grid:{display:false}, ticks:{font:{size:10}} }
+      },
+      plugins: { legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:10}}, tooltip:{mode:'index',intersect:false} }
+    }
+  });
+
+  // Donut
+  const tot_app = data.reduce((s,d)=>s+d.approved,0);
+  const tot_sub = data.reduce((s,d)=>s+d.submitted,0);
+  const tot_rej = data.reduce((s,d)=>s+d.rejected,0);
+  const tot_open = data.reduce((s,d)=>s+d.open,0);
+  if (chartDonut) chartDonut.destroy();
+  const ctx2 = document.getElementById('chartDonut').getContext('2d');
+  chartDonut = new Chart(ctx2, {
     type:'doughnut',
-    data:{labels:['Open','Submit','Reject','Approved'],datasets:[{data:[o,s,r,a],backgroundColor:['#3b82f6','#f59e0b','#ef4444','#22c55e'],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
-      plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}},
-        tooltip:{callbacks:{label:c=>{const v=c.parsed,p=g?(v/g*100).toFixed(1):'0';return` ${c.label}: ${v.toLocaleString('id-ID')} (${p}%)`}}}}}
+    data:{
+      labels:['Approved','Submitted','Rejected','Open'],
+      datasets:[{
+        data:[tot_app, tot_sub, tot_rej, tot_open],
+        backgroundColor:['rgba(39,174,96,0.85)','rgba(243,156,18,0.85)','rgba(231,76,60,0.85)','rgba(189,195,199,0.85)'],
+        borderWidth:2, borderColor:'#fff', hoverOffset:8
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout:'62%',
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:11},boxWidth:14,padding:10}},
+        tooltip:{callbacks:{label: ctx=>{
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const pct = total>0?(ctx.parsed/total*100).toFixed(1):'0';
+          return ` ${ctx.label}: ${ctx.parsed.toLocaleString('id-ID')} (${pct}%)`;
+        }}}
+      }
+    }
   });
 }
 
-// ── SUMMARY TABLE ────────────────────────────────────────────
-function renderTblSummary(){
-  const tot=k=>filteredData.reduce((s,r)=>s+r[k],0);
-  const o=tot('Open'),s=tot('Submit'),r=tot('Reject'),a=tot('Approved'),g=o+s+r+a;
-  const p=v=>g?(v/g*100).toFixed(2)+'%':'0%';
-  document.querySelector('#tblSummary tbody').innerHTML=
-    [['Open',o,'badge-open'],['Submit',s,'badge-submit'],['Reject',r,'badge-reject'],['Approved',a,'badge-approved']]
-    .map(([n,v,c])=>`<tr><td><span class="badge ${c}">${n}</span></td><td><strong>${v.toLocaleString('id-ID')}</strong></td><td>${p(v)}</td></tr>`).join('');
-  document.querySelector('#tblSummary tfoot').innerHTML=
-    `<tr><td><strong>Total</strong></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td><strong>100%</strong></td></tr>`;
-}
-
-// ── HELPERS ──────────────────────────────────────────────────
-function agByKey(key){
-  const m={};
-  filteredData.forEach(r=>{const k=r[key]||'—';if(!m[k])m[k]={Open:0,Submit:0,Reject:0,Approved:0};m[k].Open+=r.Open;m[k].Submit+=r.Submit;m[k].Reject+=r.Reject;m[k].Approved+=r.Approved});
-  return m;
-}
-function agPPL(){
-  const m={};
-  filteredData.forEach(r=>{const k=r.PPL||'—';if(!m[k])m[k]={PML:r.PML||'—',Open:0,Submit:0,Reject:0,Approved:0};m[k].Open+=r.Open;m[k].Submit+=r.Submit;m[k].Reject+=r.Reject;m[k].Approved+=r.Approved});
-  return m;
-}
-
-// ── STACKED BAR (adaptif) ────────────────────────────────────
-function makeBar(canvasId,labels,opens,submits,rejects,approvs,oldInst){
-  if(oldInst)oldInst.destroy();
-  const cv=document.getElementById(canvasId);
-  const w=Math.max(480,labels.length*62);
-  const h=Math.min(900,Math.max(280,280+Math.max(0,labels.length-5)*26));
-  cv.style.width=w+'px'; cv.style.height=h+'px'; cv.width=w; cv.height=h;
-  return new Chart(cv.getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'Open',    data:opens,   backgroundColor:'#3b82f6',stack:'s'},
-      {label:'Submit',  data:submits, backgroundColor:'#f59e0b',stack:'s'},
-      {label:'Reject',  data:rejects, backgroundColor:'#ef4444',stack:'s'},
-      {label:'Approved',data:approvs, backgroundColor:'#22c55e',stack:'s'}
-    ]},
-    options:{responsive:false,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{padding:11,font:{size:11}}},
-        tooltip:{mode:'index',callbacks:{
-          title:i=>i[0].label,
-          afterBody:i=>{const t=i.reduce((s,x)=>s+x.parsed.y,0);return['─────────',`Total: ${t.toLocaleString('id-ID')}`]},
-          label:c=>{const t=c.chart.data.datasets.reduce((s,d)=>s+(d.data[c.dataIndex]||0),0);const p=t?(c.parsed.y/t*100).toFixed(1):'0';return` ${c.dataset.label}: ${c.parsed.y.toLocaleString('id-ID')} (${p}%)`}
-        }}},
-      scales:{
-        x:{stacked:true,ticks:{maxRotation:45,minRotation:25,font:{size:10}},grid:{display:false}},
-        y:{stacked:true,beginAtZero:true,grid:{color:'#e2e8f0'},ticks:{font:{size:10}}}
-      }}
+// ============================================================
+// PENGAWAS TABLE
+// ============================================================
+function renderPengawasTable(data) {
+  const map = {};
+  data.forEach(d => {
+    if (!map[d.pengawas]) map[d.pengawas] = {approved:0,submitted:0,rejected:0,open:0,revoked:0};
+    map[d.pengawas].approved += d.approved;
+    map[d.pengawas].submitted += d.submitted;
+    map[d.pengawas].rejected += d.rejected;
+    map[d.pengawas].open += d.open;
+    map[d.pengawas].revoked += d.revoked;
+  });
+  const tbody = document.getElementById('tbody-pengawas');
+  tbody.innerHTML = '';
+  const entries = Object.entries(map).sort((a,b)=>b[1].approved-a[1].approved);
+  if (!entries.length) {
+    document.getElementById('no-pengawas').style.display='block';
+    return;
+  }
+  document.getElementById('no-pengawas').style.display='none';
+  entries.forEach(([name, v]) => {
+    const total = v.approved + v.submitted + v.rejected + v.open + v.revoked;
+    const pct = total > 0 ? (v.approved/total*100).toFixed(1) : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${name}">${name}</td>
+      <td style="text-align:center;font-weight:700;">${total}</td>
+      <td style="text-align:center;"><span class="badge badge-approved">${v.approved}</span></td>
+      <td style="text-align:center;"><span class="badge badge-submitted">${v.submitted}</span></td>
+      <td style="text-align:center;"><span class="badge badge-rejected">${v.rejected}</span></td>
+      <td>
+        <div class="pct-bar-wrap">
+          <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${pct}%"></div></div>
+          <span class="pct-text">${pct}%</span>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
   });
 }
 
-// ── RENDER TABEL AGREGAT ────────────────────────────────────
-function renderTblAgregat(tbodySel,tfootSel,entries,spanCols){
-  let tO=0,tS=0,tR=0,tA=0;
-  document.querySelector(tbodySel).innerHTML=entries.map(({prefixCols,v})=>{
-    const tot=v.Open+v.Submit+v.Reject+v.Approved;
-    const p=x=>tot?(x/tot*100).toFixed(1)+'%':'0%';
-    tO+=v.Open;tS+=v.Submit;tR+=v.Reject;tA+=v.Approved;
-    return`<tr>${prefixCols.map(c=>`<td>${c}</td>`).join('')}<td>${v.Open.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Open)}</span></td><td>${v.Submit.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Submit)}</span></td><td>${v.Reject.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Reject)}</span></td><td>${v.Approved.toLocaleString('id-ID')}<br/><span class="pct">${p(v.Approved)}</span></td><td><strong>${tot.toLocaleString('id-ID')}</strong></td><td class="pct">${p(v.Open)}</td><td class="pct">${p(v.Submit)}</td><td class="pct">${p(v.Reject)}</td><td class="pct">${p(v.Approved)}</td></tr>`;
-  }).join('');
-  const g=tO+tS+tR+tA,pg=x=>g?(x/g*100).toFixed(1)+'%':'0%';
-  document.querySelector(tfootSel).innerHTML=`<tr><td colspan="${spanCols}"><strong>TOTAL</strong></td><td>${tO.toLocaleString('id-ID')}<br/><span class="pct">${pg(tO)}</span></td><td>${tS.toLocaleString('id-ID')}<br/><span class="pct">${pg(tS)}</span></td><td>${tR.toLocaleString('id-ID')}<br/><span class="pct">${pg(tR)}</span></td><td>${tA.toLocaleString('id-ID')}<br/><span class="pct">${pg(tA)}</span></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td class="pct">${pg(tO)}</td><td class="pct">${pg(tS)}</td><td class="pct">${pg(tR)}</td><td class="pct">${pg(tA)}</td></tr>`;
+// ============================================================
+// KECAMATAN TABLE
+// ============================================================
+function renderKecamatanTable(data) {
+  const map = {};
+  data.forEach(d => {
+    if (!map[d.kecamatan]) map[d.kecamatan] = {approved:0,submitted:0,rejected:0,open:0,revoked:0};
+    map[d.kecamatan].approved += d.approved;
+    map[d.kecamatan].submitted += d.submitted;
+    map[d.kecamatan].rejected += d.rejected;
+    map[d.kecamatan].open += d.open;
+    map[d.kecamatan].revoked += d.revoked;
+  });
+  const tbody = document.getElementById('tbody-kecamatan');
+  tbody.innerHTML = '';
+  const entries = Object.entries(map).sort((a,b)=>b[1].approved-a[1].approved);
+  if (!entries.length) {
+    document.getElementById('no-kecamatan').style.display='block';
+    return;
+  }
+  document.getElementById('no-kecamatan').style.display='none';
+  entries.forEach(([name, v]) => {
+    const total = v.approved + v.submitted + v.rejected + v.open + v.revoked;
+    const pct = total > 0 ? (v.approved/total*100).toFixed(1) : 0;
+    const dispName = name.replace(/^\[\d+\]\s*/,'');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td title="${name}">${dispName}</td>
+      <td style="text-align:center;font-weight:700;">${total}</td>
+      <td style="text-align:center;"><span class="badge badge-approved">${v.approved}</span></td>
+      <td style="text-align:center;"><span class="badge badge-submitted">${v.submitted}</span></td>
+      <td style="text-align:center;"><span class="badge badge-rejected">${v.rejected}</span></td>
+      <td>
+        <div class="pct-bar-wrap">
+          <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${pct}%"></div></div>
+          <span class="pct-text">${pct}%</span>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
 }
 
-// ── PER PML ──────────────────────────────────────────────────
-function renderBarPML(){
-  const m=agByKey('PML'),l=Object.keys(m).sort();
-  barPMLInst=makeBar('barChartPML',l,l.map(k=>m[k].Open),l.map(k=>m[k].Submit),l.map(k=>m[k].Reject),l.map(k=>m[k].Approved),barPMLInst);
-}
-function renderTblPML(){
-  const m=agByKey('PML');
-  renderTblAgregat('#tblPML tbody','#tblPML tfoot',
-    Object.keys(m).sort().map(k=>({prefixCols:[k],v:m[k]})),1);
-}
-
-// ── PER PPL ──────────────────────────────────────────────────
-function renderBarPPL(){
-  const m=agPPL(),l=Object.keys(m).sort();
-  barPPLInst=makeBar('barChartPPL',l,l.map(k=>m[k].Open),l.map(k=>m[k].Submit),l.map(k=>m[k].Reject),l.map(k=>m[k].Approved),barPPLInst);
-}
-function renderTblPPL(){
-  const m=agPPL();
-  renderTblAgregat('#tblPPL tbody','#tblPPL tfoot',
-    Object.keys(m).sort().map(k=>({prefixCols:[m[k].PML,k],v:m[k]})),2);
+// ============================================================
+// DETAIL TABLE
+// ============================================================
+function sortTable(key) {
+  const headers = document.querySelectorAll('thead th');
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = true; }
+  renderTable();
 }
 
-// ── PER SLS ──────────────────────────────────────────────────
-function renderBarSLS(){
-  const l=filteredData.map(r=>r.SLS_full);
-  barSLSInst=makeBar('barChart',l,filteredData.map(r=>r.Open),filteredData.map(r=>r.Submit),filteredData.map(r=>r.Reject),filteredData.map(r=>r.Approved),barSLSInst);
+function renderTable() {
+  const search = document.getElementById('table-search').value.toLowerCase();
+  let data = getFiltered();
+  if (search) {
+    data = data.filter(d =>
+      (d.pengawas||'').toLowerCase().includes(search) ||
+      (d.pencacah||'').toLowerCase().includes(search) ||
+      (d.desa||'').toLowerCase().includes(search) ||
+      (d.subsls||'').toLowerCase().includes(search) ||
+      (d.kecamatan||'').toLowerCase().includes(search)
+    );
+  }
+  // Sort
+  data = [...data].sort((a,b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (sortKey === 'total') { va = a.open+a.submitted+a.rejected+a.revoked+a.approved; vb = b.open+b.submitted+b.rejected+b.revoked+b.approved; }
+    if (sortKey === 'no') return 0;
+    if (typeof va === 'number') return sortAsc ? va-vb : vb-va;
+    return sortAsc ? String(va).localeCompare(String(vb),'id') : String(vb).localeCompare(String(va),'id');
+  });
+
+  const tbody = document.getElementById('tbody-detail');
+  tbody.innerHTML = '';
+  const noData = document.getElementById('no-detail');
+
+  if (!data.length) { noData.style.display='block'; document.getElementById('table-count-info').textContent='Tidak ada data'; return; }
+  noData.style.display='none';
+
+  data.forEach((d,i) => {
+    const total = d.open + d.submitted + d.rejected + d.revoked + d.approved;
+    let dominant='open', domClass='badge-open';
+    const vals = {approved:d.approved, submitted:d.submitted, rejected:d.rejected, open:d.open};
+    const maxKey = Object.entries(vals).sort((a,b)=>b[1]-a[1])[0][0];
+    dominant = maxKey; domClass='badge-'+maxKey;
+    const domLabel = {approved:'Approved',submitted:'Submitted',rejected:'Rejected',open:'Open'}[dominant];
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:#aaa;font-size:11px;">${i+1}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.pengawas}">${d.pengawas}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.pencacah}">${d.pencacah}</td>
+      <td>${d.kecamatan.replace(/^\[\d+\]\s*/,'')}</td>
+      <td>${d.desa.replace(/^\[\d+\]\s*/,'')}</td>
+      <td>${d.subsls}</td>
+      <td style="text-align:center;">${d.open || '-'}</td>
+      <td style="text-align:center;">${d.submitted || '-'}</td>
+      <td style="text-align:center;">${d.rejected || '-'}</td>
+      <td style="text-align:center;">${d.revoked || '-'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--green)">${d.approved || '-'}</td>
+      <td style="text-align:center;font-weight:700;">${total}</td>
+      <td><span class="badge ${domClass}">${domLabel}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('table-count-info').textContent = `Menampilkan ${data.length} dari ${RAW_DATA.length} baris`;
 }
-function renderTblSLS(){
-  let tO=0,tS=0,tR=0,tA=0;
-  document.querySelector('#tblDetail tbody').innerHTML=filteredData.map(r=>{
-    const tot=r.Open+r.Submit+r.Reject+r.Approved;
-    const p=v=>tot?(v/tot*100).toFixed(1)+'%':'0%';
-    tO+=r.Open;tS+=r.Submit;tR+=r.Reject;tA+=r.Approved;
-    return`<tr><td>${r.PML||'—'}</td><td>${r.PPL||'—'}</td><td>${r.SLS_full}</td><td>${r.Open.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Open)}</span></td><td>${r.Submit.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Submit)}</span></td><td>${r.Reject.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Reject)}</span></td><td>${r.Approved.toLocaleString('id-ID')}<br/><span class="pct">${p(r.Approved)}</span></td><td><strong>${tot.toLocaleString('id-ID')}</strong></td><td class="pct">${p(r.Open)}</td><td class="pct">${p(r.Submit)}</td><td class="pct">${p(r.Reject)}</td><td class="pct">${p(r.Approved)}</td></tr>`;
-  }).join('');
-  const g=tO+tS+tR+tA,pg=v=>g?(v/g*100).toFixed(1)+'%':'0%';
-  document.querySelector('#tblDetail tfoot').innerHTML=`<tr><td colspan="3"><strong>TOTAL</strong></td><td>${tO.toLocaleString('id-ID')}<br/><span class="pct">${pg(tO)}</span></td><td>${tS.toLocaleString('id-ID')}<br/><span class="pct">${pg(tS)}</span></td><td>${tR.toLocaleString('id-ID')}<br/><span class="pct">${pg(tR)}</span></td><td>${tA.toLocaleString('id-ID')}<br/><span class="pct">${pg(tA)}</span></td><td><strong>${g.toLocaleString('id-ID')}</strong></td><td class="pct">${pg(tO)}</td><td class="pct">${pg(tS)}</td><td class="pct">${pg(tR)}</td><td class="pct">${pg(tA)}</td></tr>`;
+
+// ============================================================
+// COPY / DOWNLOAD
+// ============================================================
+function openCopyModal() {
+  document.getElementById('copy-nama').value = '';
+  document.getElementById('copy-deadline-p').value = '';
+  document.getElementById('copy-deadline-m').value = '';
+  document.getElementById('copy-periode').value = '';
+  document.getElementById('modal-copy').classList.add('active');
 }
+function closeCopyModal() {
+  document.getElementById('modal-copy').classList.remove('active');
+}
+
+function executeCopy() {
+  const nama = document.getElementById('copy-nama').value.trim();
+  if (!nama) { alert('Nama kegiatan baru wajib diisi.'); return; }
+  const dp = document.getElementById('copy-deadline-p').value;
+  const dm = document.getElementById('copy-deadline-m').value;
+  const periode = document.getElementById('copy-periode').value.trim();
+
+  // Get current page HTML and replace config defaults
+  let html = document.documentElement.outerHTML;
+
+  // Replace config localStorage key to be unique per kegiatan
+  const safeKey = 'dash_config_' + nama.replace(/\s+/g,'_').toLowerCase();
+  html = html.replace(/localStorage\.getItem\('dash_config'\)/g, `localStorage.getItem('${safeKey}')`);
+  html = html.replace(/localStorage\.setItem\('dash_config'/g, `localStorage.setItem('${safeKey}'`);
+
+  // Inject default config values into the new file
+  const inject = `
+  // ---- AUTO-INJECTED CONFIG ----
+  window.__dashDefaultConfig = {
+    namaKegiatan: ${JSON.stringify(nama)},
+    deadlinePendataan: ${JSON.stringify(dp)},
+    deadlinePemutakhiran: ${JSON.stringify(dm)},
+    periode: ${JSON.stringify(periode)}
+  };
+  `;
+  html = html.replace('// ============================================================\n// STATE', inject + '\n// ============================================================\n// STATE');
+
+  // Patch loadConfig to also use defaults
+  html = html.replace(
+    'function loadConfig() {',
+    `function loadConfig() {
+  if (window.__dashDefaultConfig) {
+    config = {...config, ...window.__dashDefaultConfig};
+    if (config.namaKegiatan) { document.getElementById('input-nama-kegiatan').value = config.namaKegiatan; document.getElementById('header-nama-kegiatan').textContent = config.namaKegiatan; }
+    if (config.deadlinePendataan) document.getElementById('input-deadline-pendataan').value = config.deadlinePendataan;
+    if (config.deadlinePemutakhiran) document.getElementById('input-deadline-pemutakhiran').value = config.deadlinePemutakhiran;
+    if (config.periode) { document.getElementById('input-periode').value = config.periode; document.getElementById('table-periode-info').textContent = 'Periode: ' + config.periode; }
+  }`
+  );
+
+  // Also clear RAW_DATA in the copy so user knows to update it
+  const notice = `
+  /* ==========================================================
+   * FILE INI ADALAH SALINAN UNTUK KEGIATAN: ${nama}
+   * Periode: ${periode || '-'}
+   * Update konstanta RAW_DATA di bawah dengan data terbaru
+   * ========================================================== */
+  `;
+  html = html.replace('const RAW_DATA = [', notice + 'const RAW_DATA = [');
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Dashboard_Monitoring_${nama.replace(/\s+/g,'_')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeCopyModal();
+}
+
+// Close modal on overlay click
+document.getElementById('modal-copy').addEventListener('click', function(e) {
+  if (e.target === this) closeCopyModal();
+});
 </script>
 </body>
 </html>
