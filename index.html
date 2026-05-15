@@ -278,9 +278,16 @@ function processUpload(){
       const newMetaInfo={};
       XLSX.utils.sheet_to_json(metaWs,{header:1,defval:''}).forEach(r=>{
         if(r[0]&&r[1]!==undefined){
-          const v=r[1];
-          // Konversi Date object menjadi ISO string agar bisa di-serialize ke JSON
-          newMetaInfo[String(r[0]).trim().toLowerCase()]=(v instanceof Date)?v.toISOString():v;
+          let v=r[1];
+          // Konversi Date object menjadi string "YYYY-MM-DD" (date-only, bebas timezone)
+          // agar tidak terjadi pergeseran 1 hari saat round-trip JSON antar zona waktu.
+          if(v instanceof Date && !isNaN(v)){
+            const yy=v.getFullYear();
+            const mm=String(v.getMonth()+1).padStart(2,'0');
+            const dd=String(v.getDate()).padStart(2,'0');
+            v=`${yy}-${mm}-${dd}`;
+          }
+          newMetaInfo[String(r[0]).trim().toLowerCase()]=v;
         }
       });
       // parse data
@@ -465,19 +472,39 @@ function renderAll(){
 }
 
 // ── META ─────────────────────────────────────────────────────
+// Konversi nilai apa pun (Date obj / "YYYY-MM-DD" / ISO string lama) ke local Date
+// yang mewakili "hari yang dimaksudkan user" — tanpa pergeseran timezone.
+function toLocalDate(v){
+  if(v==null||v===''||v==='—') return null;
+  if(v instanceof Date) return isNaN(v)?null:new Date(v.getFullYear(),v.getMonth(),v.getDate());
+  if(typeof v==='string'){
+    // Format ideal baru: "YYYY-MM-DD" (date-only, dibangun langsung sebagai local)
+    const m=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+    // Backward compat: ISO string lama dari toISOString() (mengandung 'T')
+    // Parse lalu ambil komponen LOCAL agar konsisten dengan intent saat upload.
+    const dt=new Date(v);
+    if(!isNaN(dt)) return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());
+  }
+  return null;
+}
 function renderMeta(){
   const g=(...ks)=>{for(const k of ks){const v=metaInfo[k.toLowerCase()];if(v!==undefined&&v!=='')return v}return'—'};
   document.getElementById('metaNamaKegiatan').textContent=g('kegiatan');
   document.getElementById('metaTahap').textContent=g('tahap');
-  const fmtD=d=>{if(!d||d==='—')return'—';const dt=d instanceof Date?d:new Date(d);return isNaN(dt)?String(d):dt.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})};
+  const fmtD=d=>{
+    if(!d||d==='—') return '—';
+    const dt=toLocalDate(d);
+    return dt?dt.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}):String(d);
+  };
   const periodeRaw=g('periode'), deadlineRaw=g('deadline');
   document.getElementById('metaPeriode').textContent=fmtD(periodeRaw);
   document.getElementById('metaDeadline').textContent=fmtD(deadlineRaw);
   const now=new Date();now.setHours(0,0,0,0);
-  const dl=deadlineRaw instanceof Date?deadlineRaw:new Date(deadlineRaw);
+  const dl=toLocalDate(deadlineRaw);
   const sw=document.getElementById('sisaWaktu');
   sw.className='sisa-waktu-badge';
-  if(!isNaN(dl)){
+  if(dl){
     const d=Math.round((dl-now)/86400000);
     if(d>3){sw.textContent=d+' hari lagi';sw.classList.add('sisa-ok')}
     else if(d>=0){sw.textContent=d+' hari lagi ⚠';sw.classList.add('sisa-warn')}
