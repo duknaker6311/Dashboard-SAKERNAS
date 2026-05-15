@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -200,7 +201,9 @@
     <div id="uploadStep" style="display:none">
       <div class="form-group"><label>Upload File Excel</label><input type="file" id="fileInput" accept=".xlsx,.xls"/><div class="file-note">Format: .xlsx/.xls &bull; Sheet 1: <strong>DB_Progres</strong> &bull; Sheet 2: <strong>Lembar2</strong></div></div>
       <div style="background:#f0f4f8;border-radius:8px;padding:11px;margin-bottom:13px;font-size:.77rem;color:#475569"><strong>Kolom DB_Progres:</strong> PML | PPL | Desa | SLS | Open | Submit | Reject | Approved<br/><strong>Lembar2:</strong> Kegiatan | Tahap | Periode | Deadline</div>
-      <button class="btn-submit" onclick="processUpload()">📥 Load Dashboard</button>
+      <div class="form-group"><label>GitHub Personal Access Token (PAT)</label><input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"/><div class="file-note">Diperlukan untuk publish data ke repo. <a href="https://github.com/settings/tokens/new?scopes=repo&description=Dashboard%20SAKERNAS" target="_blank" style="color:var(--primary-light)">Buat PAT baru</a> dengan scope <strong>repo</strong>. Token disimpan di browser ini saja.</div></div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:13px;font-size:.8rem;color:#475569"><input type="checkbox" id="rememberPat" checked style="width:15px;height:15px;cursor:pointer"/><label for="rememberPat" style="cursor:pointer;margin:0;font-size:.8rem;text-transform:none;letter-spacing:0;font-weight:500">Ingat PAT di browser ini</label><button type="button" onclick="forgetPat()" style="margin-left:auto;background:none;border:none;color:var(--reject);font-size:.74rem;cursor:pointer;text-decoration:underline">Hapus PAT tersimpan</button></div>
+      <button class="btn-submit" id="btnPublish" onclick="processUpload()">🚀 Publish ke GitHub</button>
     </div>
   </div>
 </div>
@@ -208,6 +211,15 @@
 // ── CONFIG ──────────────────────────────────────────────────
 function hashCode(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return h}
 const PWD_HASH = hashCode('sakernas6311');
+
+// GitHub repo tempat data.json disimpan & dimuat
+const GH_OWNER = 'duknaker6311';
+const GH_REPO  = 'Dashboard-SAKERNAS';
+const GH_BRANCH= 'main';
+const GH_DATA_PATH = 'data.json';
+const RAW_URL  = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_DATA_PATH}`;
+const API_URL  = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_DATA_PATH}`;
+const PAT_KEY  = 'dashboard_sakernas_pat_v1';
 
 // ── STATE ────────────────────────────────────────────────────
 let rawData=[],filteredData=[],metaInfo={};
@@ -218,11 +230,21 @@ function openModal(){
   document.getElementById('modalOverlay').classList.add('active');
   document.getElementById('pwdInput').value='';
   document.getElementById('fileInput').value='';
+  // Pre-fill PAT dari localStorage jika sudah pernah disimpan
+  const savedPat=localStorage.getItem(PAT_KEY)||'';
+  document.getElementById('patInput').value=savedPat;
+  document.getElementById('rememberPat').checked=!!savedPat;
   document.getElementById('modalError').style.display='none';
   document.getElementById('modalSuccess').style.display='none';
   document.getElementById('authStep').style.display='block';
   document.getElementById('uploadStep').style.display='none';
   setTimeout(()=>document.getElementById('pwdInput').focus(),100);
+}
+function forgetPat(){
+  localStorage.removeItem(PAT_KEY);
+  document.getElementById('patInput').value='';
+  document.getElementById('rememberPat').checked=false;
+  showOk('PAT yang tersimpan telah dihapus dari browser ini.');
 }
 function closeModal(){document.getElementById('modalOverlay').classList.remove('active')}
 function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal()}
@@ -241,7 +263,9 @@ function verifyPassword(){
 // ── UPLOAD & PARSE ───────────────────────────────────────────
 function processUpload(){
   const file=document.getElementById('fileInput').files[0];
+  const pat=document.getElementById('patInput').value.trim();
   if(!file){showErr('Pilih file Excel terlebih dahulu.');return}
+  if(!pat){showErr('GitHub Personal Access Token wajib diisi untuk publish data.');return}
   const reader=new FileReader();
   reader.onload=function(e){
     try{
@@ -251,32 +275,134 @@ function processUpload(){
       const metaWs=wb.Sheets[metaSh], dbWs=wb.Sheets[dbSh];
       if(!metaWs||!dbWs){showErr('Sheet tidak ditemukan. Pastikan ada sheet DB_Progres dan Lembar2.');return}
       // parse meta
-      metaInfo={};
+      const newMetaInfo={};
       XLSX.utils.sheet_to_json(metaWs,{header:1,defval:''}).forEach(r=>{
-        if(r[0]&&r[1]!==undefined) metaInfo[String(r[0]).trim().toLowerCase()]=r[1];
+        if(r[0]&&r[1]!==undefined){
+          const v=r[1];
+          // Konversi Date object menjadi ISO string agar bisa di-serialize ke JSON
+          newMetaInfo[String(r[0]).trim().toLowerCase()]=(v instanceof Date)?v.toISOString():v;
+        }
       });
       // parse data
       const rows=XLSX.utils.sheet_to_json(dbWs,{defval:0});
       if(!rows.length){showErr('Sheet DB_Progres kosong atau header tidak dikenali.');return}
-      rawData=rows.filter(r=>r.PML||r.PPL||r.Desa||r.SLS).map(r=>({
+      const newRawData=rows.filter(r=>r.PML||r.PPL||r.Desa||r.SLS).map(r=>({
         PML:String(r.PML||'').trim(),PPL:String(r.PPL||'').trim(),
         Desa:String(r.Desa||'').trim(),SLS:String(r.SLS||'').trim(),
         SLS_full:String(r.Desa||'').trim()+' - '+String(r.SLS||'').trim(),
         Open:Number(r.Open)||0,Submit:Number(r.Submit)||0,
         Reject:Number(r.Reject)||0,Approved:Number(r.Approved)||0
       }));
-      if(!rawData.length){showErr('Tidak ada data valid di sheet DB_Progres.');return}
-      document.getElementById('lastUpdated').textContent=
-        'Update: '+new Date().toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      filteredData=[...rawData];
-      populateFilters();
-      renderAll();
-      showOk('Data berhasil dimuat! '+rawData.length+' baris ditemukan.');
-      setTimeout(closeModal,1500);
+      if(!newRawData.length){showErr('Tidak ada data valid di sheet DB_Progres.');return}
+
+      // Build payload yang akan dipublish ke GitHub
+      const payload={
+        version:1,
+        lastUpdated:new Date().toISOString(),
+        metaInfo:newMetaInfo,
+        rawData:newRawData
+      };
+
+      // Simpan PAT jika dicentang
+      if(document.getElementById('rememberPat').checked){
+        localStorage.setItem(PAT_KEY,pat);
+      }else{
+        localStorage.removeItem(PAT_KEY);
+      }
+
+      // Disable tombol & tampilkan progress
+      const btn=document.getElementById('btnPublish');
+      btn.disabled=true;btn.textContent='⏳ Publishing ke GitHub...';
+      showOk('Data berhasil di-parse ('+newRawData.length+' baris). Mengupload ke GitHub...');
+
+      commitToGitHub(pat,payload).then(()=>{
+        // Apply ke state setelah commit sukses
+        rawData=newRawData;
+        metaInfo=newMetaInfo;
+        filteredData=[...rawData];
+        document.getElementById('lastUpdated').textContent=
+          'Update: '+new Date(payload.lastUpdated).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        populateFilters();
+        renderAll();
+        showOk('✅ Berhasil! Data ter-publish ke GitHub. Semua pengguna akan melihat update ini.');
+        btn.disabled=false;btn.textContent='🚀 Publish ke GitHub';
+        setTimeout(closeModal,2000);
+      }).catch(err=>{
+        btn.disabled=false;btn.textContent='🚀 Publish ke GitHub';
+        let msg=err.message||'Gagal commit ke GitHub';
+        if(/401|bad credentials/i.test(msg)) msg='PAT tidak valid atau expired. Generate PAT baru dengan scope "repo".';
+        else if(/404/i.test(msg)) msg='Repository tidak ditemukan. Cek konfigurasi GH_OWNER/GH_REPO/GH_BRANCH di file HTML.';
+        else if(/403/i.test(msg)) msg='Akses ditolak. Pastikan PAT punya scope "repo" dan Anda punya akses tulis ke repo.';
+        showErr('❌ '+msg);
+        console.error(err);
+      });
     }catch(err){showErr('Gagal membaca file: '+err.message);console.error(err)}
   };
   reader.readAsBinaryString(file);
 }
+
+// ── GITHUB COMMIT ────────────────────────────────────────────
+async function commitToGitHub(pat,payload){
+  const headers={
+    'Authorization':'token '+pat,
+    'Accept':'application/vnd.github+json',
+    'X-GitHub-Api-Version':'2022-11-28'
+  };
+  // Ambil SHA file existing (jika ada) — wajib untuk update
+  let sha=null;
+  try{
+    const r=await fetch(API_URL+'?ref='+encodeURIComponent(GH_BRANCH),{headers});
+    if(r.ok){const j=await r.json();sha=j.sha;}
+    else if(r.status!==404){
+      const j=await r.json().catch(()=>({}));
+      throw new Error('GET file gagal: '+r.status+' '+(j.message||''));
+    }
+  }catch(e){if(!/404/.test(e.message))throw e;}
+  // Encode JSON ke base64 (UTF-8 safe)
+  const json=JSON.stringify(payload);
+  const b64=btoa(unescape(encodeURIComponent(json)));
+  const body={
+    message:'chore(data): update dashboard data '+payload.lastUpdated,
+    content:b64,
+    branch:GH_BRANCH
+  };
+  if(sha)body.sha=sha;
+  const res=await fetch(API_URL,{method:'PUT',headers,body:JSON.stringify(body)});
+  if(!res.ok){
+    const j=await res.json().catch(()=>({}));
+    throw new Error('PUT gagal: '+res.status+' '+(j.message||res.statusText));
+  }
+  return res.json();
+}
+
+// ── AUTO-LOAD DARI GITHUB SAAT HALAMAN DIBUKA ────────────────
+async function loadFromGitHub(){
+  try{
+    // Cache busting agar selalu dapat versi terbaru (CDN raw kadang di-cache)
+    const url=RAW_URL+'?t='+Date.now();
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok){
+      if(res.status===404){console.info('data.json belum ada di repo — menunggu upload pertama.');return;}
+      throw new Error('HTTP '+res.status);
+    }
+    const payload=await res.json();
+    if(!payload||!Array.isArray(payload.rawData)||!payload.rawData.length){
+      console.info('Payload tidak valid atau kosong.');return;
+    }
+    rawData=payload.rawData;
+    metaInfo=payload.metaInfo||{};
+    filteredData=[...rawData];
+    if(payload.lastUpdated){
+      document.getElementById('lastUpdated').textContent=
+        'Update: '+new Date(payload.lastUpdated).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+    populateFilters();
+    renderAll();
+  }catch(err){
+    console.warn('Gagal memuat data tersimpan dari GitHub:',err.message);
+  }
+}
+document.addEventListener('DOMContentLoaded',loadFromGitHub);
 
 // ── FILTER CASCADE ───────────────────────────────────────────
 function setOpts(selId,vals,ph){
